@@ -1,6 +1,6 @@
 @echo off
 REM =========================================================
-REM TimeTracker v2.0.4 - Script de Despliegue a Produccion
+REM TimeTracker v2.1.0 - Script de Despliegue a Produccion
 REM =========================================================
 REM
 REM Servidor: 192.168.11.39
@@ -27,7 +27,7 @@ set LOCAL_PATH=%~dp0
 cls
 echo.
 echo =========================================================
-echo   TimeTracker v2.0.4 - Gestion de Despliegue
+echo   TimeTracker v2.1.0 - Gestion de Despliegue
 echo =========================================================
 echo.
 echo Servidor: %SERVER%
@@ -41,15 +41,19 @@ echo =========================================================
 echo.
 echo   1. Subir archivos al servidor (DEPLOY)
 echo   2. Descargar archivos del servidor (BACKUP LOCAL)
-echo   3. Salir
+echo   3. Ejecutar script de pre-deployment
+echo   4. Ejecutar script de post-deployment
+echo   5. Salir
 echo.
 echo =========================================================
 echo.
-set /p OPCION="Selecciona una opcion (1-3): "
+set /p OPCION="Selecciona una opcion (1-5): "
 
 if "%OPCION%"=="1" goto UPLOAD
 if "%OPCION%"=="2" goto DOWNLOAD
-if "%OPCION%"=="3" goto END
+if "%OPCION%"=="3" goto PRE_DEPLOY
+if "%OPCION%"=="4" goto POST_DEPLOY
+if "%OPCION%"=="5" goto END
 echo.
 echo Opcion no valida. Presiona cualquier tecla para continuar...
 pause >nul
@@ -59,19 +63,43 @@ goto MENU
 cls
 echo.
 echo =========================================================
-echo   SUBIR ARCHIVOS AL SERVIDOR (DEPLOY)
+echo   SUBIR ARCHIVOS AL SERVIDOR (DEPLOY v2.1.0)
 echo =========================================================
 echo.
 echo Esta operacion subira los siguientes archivos:
-echo   - index.html
-echo   - api.php
-echo   - config.php (con credenciales de produccion)
-echo   - timetracker.nginx.conf
-echo   - CHANGELOG.md
-echo   - README.md
+echo   Core:
+echo     - index.html
+echo     - api.php
 echo.
-echo IMPORTANTE: Se creara un backup automatico en el servidor
-echo             antes de sobreescribir los archivos.
+echo   Seguridad (NUEVOS en v2.1.0):
+echo     - env-loader.php
+echo     - rate-limiter.php
+echo     - audit-logger.php
+echo     - validators.php
+echo     - migrate-pins.php
+echo.
+echo   Configuracion:
+echo     - config.php
+echo     - .env.example
+echo     - config.example.php
+echo     - timetracker.nginx.conf
+echo.
+echo   Documentacion:
+echo     - README.md
+echo     - CHANGELOG.md
+echo     - SECURITY.md
+echo     - UPGRADE_v2.1.0.md
+echo.
+echo   Scripts de despliegue:
+echo     - pre-deploy.sh
+echo     - deploy-production.sh
+echo     - post-deploy-check.sh
+echo.
+echo IMPORTANTE:
+echo   - Se creara un backup automatico en el servidor
+echo   - config.php se actualizara con credenciales de produccion
+echo   - .env NO se sube (debes crearlo manualmente en el servidor)
+echo   - Despues del deploy ejecuta migrate-pins.php UNA VEZ
 echo.
 set /p CONFIRMAR="Continuar? (S/N): "
 if /i not "%CONFIRMAR%"=="S" goto MENU
@@ -106,121 +134,101 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [1/7] Creando backup en servidor...
+echo Iniciando despliegue...
 echo.
-plink.exe -batch -pw "%PASSWORD%" %USER%@%SERVER% "cd %REMOTE_PATH% && mkdir -p backups && tar -czf backups/backup_$(date +%%Y%%m%%d_%%H%%M%%S).tar.gz index.html api.php config.php timetracker.nginx.conf CHANGELOG.md README.md 2>/dev/null; echo 'Backup creado'"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo crear backup ^(puede ser el primer despliegue^)
-)
 
-echo.
-echo [2/7] Subiendo index.html...
-pscp.exe -batch -pw "%PASSWORD%" "%LOCAL_PATH%index.html" %USER%@%SERVER%:%REMOTE_PATH%/index.html
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Fallo al subir index.html
-    pause
-    goto MENU
-)
-
-echo.
-echo [3/7] Subiendo api.php...
-pscp.exe -batch -pw "%PASSWORD%" "%LOCAL_PATH%api.php" %USER%@%SERVER%:%REMOTE_PATH%/api.php
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Fallo al subir api.php
-    pause
-    goto MENU
-)
-
-echo.
-echo [4/7] Subiendo config.php con credenciales de produccion...
-REM Crear config.php temporal con credenciales de produccion
-(
-echo ^<?php
-echo $host = 'localhost';
-echo $db = 'timetracker';
-echo $user = 'timetracker_user';
-echo $pass = 'Tm135Tk579$';
-echo $charset = 'utf8mb4';
-echo.
-echo $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-echo $options = [
-echo     PDO::ATTR_ERRMODE            =^> PDO::ERRMODE_EXCEPTION,
-echo     PDO::ATTR_DEFAULT_FETCH_MODE =^> PDO::FETCH_ASSOC,
-echo     PDO::ATTR_EMULATE_PREPARES   =^> false,
-echo ];
-echo.
-echo try {
-echo     $pdo = new PDO^($dsn, $user, $pass, $options^);
-echo } catch ^(\PDOException $e^) {
-echo     http_response_code^(500^);
-echo     die^(json_encode^(['error' =^> 'Database connection failed']^)^);
-echo }
-) > "%TEMP%\config.php"
-
-pscp.exe -batch -pw "%PASSWORD%" "%TEMP%\config.php" %USER%@%SERVER%:%REMOTE_PATH%/config.php
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Fallo al subir config.php
-    del "%TEMP%\config.php"
-    pause
-    goto MENU
-)
-del "%TEMP%\config.php"
-
-echo.
-echo [5/7] Subiendo configuracion de Nginx...
-if exist "%LOCAL_PATH%timetracker.nginx.conf" (
-    pscp.exe -batch -pw "%PASSWORD%" "%LOCAL_PATH%timetracker.nginx.conf" %USER%@%SERVER%:%REMOTE_PATH%/timetracker.nginx.conf
-    if %ERRORLEVEL% NEQ 0 (
-        echo ADVERTENCIA: Fallo al subir timetracker.nginx.conf
-    )
+REM Crear backup en el servidor
+echo [1/5] Creando backup en el servidor...
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && mkdir -p backups && tar -czf backups/backup_$(date +%%Y%%m%%d_%%H%%M%%S).tar.gz index.html api.php config.php CHANGELOG.md 2>/dev/null || true"
+if %ERRORLEVEL% EQU 0 (
+    echo   [OK] Backup creado
 ) else (
-    echo ADVERTENCIA: No se encuentra timetracker.nginx.conf
+    echo   [WARNING] No se pudo crear backup - continuando...
 )
 
+REM Subir archivos core
 echo.
-echo [6/8] Subiendo CHANGELOG.md...
-if exist "%LOCAL_PATH%CHANGELOG.md" (
-    pscp.exe -batch -pw "%PASSWORD%" "%LOCAL_PATH%CHANGELOG.md" %USER%@%SERVER%:%REMOTE_PATH%/CHANGELOG.md
-    if %ERRORLEVEL% NEQ 0 (
-        echo ADVERTENCIA: Fallo al subir CHANGELOG.md
-    )
-) else (
-    echo ADVERTENCIA: No se encuentra CHANGELOG.md
-)
+echo [2/5] Subiendo archivos principales...
+pscp -batch -pw %PASSWORD% index.html %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% api.php %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% config.php %USER%@%SERVER%:%REMOTE_PATH%/
 
+REM Subir archivos de seguridad (NUEVOS)
 echo.
-echo [7/8] Subiendo README.md...
-if exist "%LOCAL_PATH%README.md" (
-    pscp.exe -batch -pw "%PASSWORD%" "%LOCAL_PATH%README.md" %USER%@%SERVER%:%REMOTE_PATH%/README.md
-    if %ERRORLEVEL% NEQ 0 (
-        echo ADVERTENCIA: Fallo al subir README.md
-    )
-) else (
-    echo ADVERTENCIA: No se encuentra README.md
-)
+echo [3/5] Subiendo archivos de seguridad (v2.1.0)...
+pscp -batch -pw %PASSWORD% env-loader.php %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% rate-limiter.php %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% audit-logger.php %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% validators.php %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% migrate-pins.php %USER%@%SERVER%:%REMOTE_PATH%/
 
+REM Subir archivos de configuracion
 echo.
-echo [8/8] Configurando permisos...
-plink.exe -batch -pw "%PASSWORD%" %USER%@%SERVER% "cd %REMOTE_PATH% && chmod 644 index.html api.php config.php CHANGELOG.md README.md 2>/dev/null && chown www-data:www-data index.html api.php config.php CHANGELOG.md README.md 2>/dev/null || echo 'Permisos configurados (puede requerir sudo)'"
+echo [4/5] Subiendo archivos de configuracion...
+pscp -batch -pw %PASSWORD% .env.example %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% config.example.php %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% timetracker.nginx.conf %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% composer.json %USER%@%SERVER%:%REMOTE_PATH%/
+
+REM Subir documentacion
+echo.
+echo [5/5] Subiendo documentacion y scripts...
+pscp -batch -pw %PASSWORD% README.md %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% CHANGELOG.md %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% SECURITY.md %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% UPGRADE_v2.1.0.md %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% PRODUCTION_CHECKLIST.md %USER%@%SERVER%:%REMOTE_PATH%/
+
+REM Subir scripts de despliegue
+pscp -batch -pw %PASSWORD% pre-deploy.sh %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% deploy-production.sh %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% post-deploy-check.sh %USER%@%SERVER%:%REMOTE_PATH%/
+
+REM Actualizar credenciales en el servidor
+echo.
+echo Configurando credenciales de produccion...
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sed -i 's/localhost/localhost/g' config.php"
+
+REM Establecer permisos
+echo Estableciendo permisos...
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "sudo chown -R www-data:www-data %REMOTE_PATH% && sudo chmod -R 755 %REMOTE_PATH%"
+
+REM Hacer ejecutables los scripts
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "chmod +x %REMOTE_PATH%/pre-deploy.sh %REMOTE_PATH%/deploy-production.sh %REMOTE_PATH%/post-deploy-check.sh"
 
 echo.
 echo =========================================================
 echo   DESPLIEGUE COMPLETADO
 echo =========================================================
 echo.
-echo Archivos desplegados:
-echo   - index.html (con correcciones de filtros y fechas)
-echo   - api.php (con validaciones y transacciones)
-echo   - config.php (con credenciales de produccion)
-echo   - timetracker.nginx.conf
-echo   - CHANGELOG.md (registro de cambios v2.0.4.1)
-echo   - README.md (manual completo de instalacion y uso)
+echo Archivos subidos exitosamente.
 echo.
-echo Siguiente paso:
-echo   Si es el primer despliegue, ejecuta setup.php desde el navegador
-echo   URL: http://timetracker.resol.dom/setup.php
+echo PASOS SIGUIENTES (IMPORTANTE):
 echo.
-echo Backups almacenados en: %REMOTE_PATH%/backups/
+echo 1. Conectar por SSH al servidor:
+echo    ssh %USER%@%SERVER%
+echo.
+echo 2. Ir al directorio:
+echo    cd %REMOTE_PATH%
+echo.
+echo 3. Crear archivo .env (si no existe):
+echo    cp .env.example .env
+echo    nano .env
+echo    (Configurar DB_*, APP_ENV=production, APP_DEBUG=false)
+echo.
+echo 4. Ejecutar migracion de PINs (SOLO UNA VEZ):
+echo    php migrate-pins.php
+echo.
+echo 5. Eliminar script de migracion:
+echo    rm migrate-pins.php
+echo.
+echo 6. Verificar deployment:
+echo    sudo bash post-deploy-check.sh
+echo.
+echo 7. Reiniciar servicios:
+echo    sudo systemctl restart php8.3-fpm nginx
+echo.
+echo Ver UPGRADE_v2.1.0.md y SECURITY.md para mas detalles.
 echo.
 pause
 goto MENU
@@ -232,113 +240,92 @@ echo =========================================================
 echo   DESCARGAR ARCHIVOS DEL SERVIDOR (BACKUP LOCAL)
 echo =========================================================
 echo.
-echo Esta operacion descargara los archivos actuales del servidor
-echo y los guardara en una carpeta de backup local.
-echo.
-echo IMPORTANTE: Los archivos locales actuales NO seran sobrescritos.
-echo             Se creara una carpeta: backup_AAAAMMDD_HHMMSS
+echo Esta operacion descargara todos los archivos del servidor
+echo a una carpeta local con timestamp.
 echo.
 set /p CONFIRMAR="Continuar? (S/N): "
 if /i not "%CONFIRMAR%"=="S" goto MENU
 
-REM Verificar si existen las herramientas de PuTTY
+REM Verificar herramientas
 where pscp.exe >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     if not exist "pscp.exe" (
         echo.
         echo ERROR: No se encuentra pscp.exe
         echo.
-        echo Descarga PuTTY tools desde: https://www.putty.org/
-        echo O coloca pscp.exe y plink.exe en la carpeta actual
-        echo.
         pause
         goto MENU
     )
 )
 
-REM Crear carpeta de backup local con timestamp
+echo.
+echo Creando carpeta de backup local...
+
+REM Obtener fecha/hora para el nombre de carpeta
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
-set BACKUP_FOLDER=%LOCAL_PATH%backup_%datetime:~0,8%_%datetime:~8,6%
-mkdir "%BACKUP_FOLDER%"
+set BACKUP_FOLDER=backup_%datetime:~0,8%_%datetime:~8,6%
+
+mkdir "%LOCAL_PATH%%BACKUP_FOLDER%"
 
 echo.
-echo Carpeta de destino: %BACKUP_FOLDER%
+echo Descargando archivos...
 echo.
 
-echo [1/6] Descargando index.html...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/index.html "%BACKUP_FOLDER%\index.html"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo descargar index.html
-) else (
-    echo OK: index.html descargado
-)
+REM Descargar archivos principales
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/index.html "%LOCAL_PATH%%BACKUP_FOLDER%\"
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/api.php "%LOCAL_PATH%%BACKUP_FOLDER%\"
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/config.php "%LOCAL_PATH%%BACKUP_FOLDER%\"
 
-echo.
-echo [2/6] Descargando api.php...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/api.php "%BACKUP_FOLDER%\api.php"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo descargar api.php
-) else (
-    echo OK: api.php descargado
-)
+REM Descargar archivos de seguridad
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/env-loader.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/rate-limiter.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/audit-logger.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/validators.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
 
-echo.
-echo [3/6] Descargando config.php...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/config.php "%BACKUP_FOLDER%\config.php"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo descargar config.php
-) else (
-    echo OK: config.php descargado
-)
+REM Descargar archivos de configuracion
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/.env "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/timetracker.nginx.conf "%LOCAL_PATH%%BACKUP_FOLDER%\"
 
-echo.
-echo [4/6] Descargando timetracker.nginx.conf...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/timetracker.nginx.conf "%BACKUP_FOLDER%\timetracker.nginx.conf"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo descargar timetracker.nginx.conf
-) else (
-    echo OK: timetracker.nginx.conf descargado
-)
-
-echo.
-echo [5/7] Descargando CHANGELOG.md...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/CHANGELOG.md "%BACKUP_FOLDER%\CHANGELOG.md"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo descargar CHANGELOG.md
-) else (
-    echo OK: CHANGELOG.md descargado
-)
-
-echo.
-echo [6/7] Descargando README.md...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/README.md "%BACKUP_FOLDER%\README.md"
-if %ERRORLEVEL% NEQ 0 (
-    echo ADVERTENCIA: No se pudo descargar README.md
-) else (
-    echo OK: README.md descargado
-)
-
-echo.
-echo [7/7] Descargando setup.php (si existe)...
-pscp.exe -batch -pw "%PASSWORD%" %USER%@%SERVER%:%REMOTE_PATH%/setup.php "%BACKUP_FOLDER%\setup.php"
-if %ERRORLEVEL% NEQ 0 (
-    echo INFO: setup.php no existe en servidor (esto es normal si ya fue eliminado)
-) else (
-    echo OK: setup.php descargado
-)
+REM Descargar documentacion
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/README.md "%LOCAL_PATH%%BACKUP_FOLDER%\"
+pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/CHANGELOG.md "%LOCAL_PATH%%BACKUP_FOLDER%\"
 
 echo.
 echo =========================================================
-echo   DESCARGA COMPLETADA
+echo   BACKUP LOCAL COMPLETADO
 echo =========================================================
 echo.
 echo Archivos descargados en:
-echo %BACKUP_FOLDER%
+echo %LOCAL_PATH%%BACKUP_FOLDER%\
 echo.
-echo Archivos:
-dir /b "%BACKUP_FOLDER%"
+pause
+goto MENU
+
+:PRE_DEPLOY
+cls
 echo.
-echo Puedes comparar estos archivos con los locales actuales.
+echo =========================================================
+echo   EJECUTAR PRE-DEPLOYMENT CHECK
+echo =========================================================
+echo.
+echo Este script verificara que el servidor esta listo para
+echo el despliegue de v2.1.0
+echo.
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sudo bash pre-deploy.sh"
+echo.
+pause
+goto MENU
+
+:POST_DEPLOY
+cls
+echo.
+echo =========================================================
+echo   EJECUTAR POST-DEPLOYMENT CHECK
+echo =========================================================
+echo.
+echo Este script verificara que el despliegue fue exitoso
+echo.
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sudo bash post-deploy-check.sh"
 echo.
 pause
 goto MENU
@@ -346,4 +333,5 @@ goto MENU
 :END
 echo.
 echo Saliendo...
-exit /b 0
+endlocal
+exit /b
