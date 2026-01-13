@@ -5,19 +5,45 @@
  */
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+// CORS: Restringir a dominio interno (cambiar según tu configuración)
+require_once __DIR__ . '/env-loader.php';
+$allowedOrigin = env('APP_DOMAIN', 'timetracker.resol.dom');
+
+// Verificar el origen de la petición
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+$allowedOrigins = [
+    'http://' . $allowedOrigin,
+    'https://' . $allowedOrigin,
+    'http://localhost',  // Para desarrollo local
+    'http://127.0.0.1'   // Para desarrollo local
+];
+
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    // Si el origin no está permitido, usar el principal por defecto
+    header('Access-Control-Allow-Origin: http://' . $allowedOrigin);
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
 require_once 'config.php';
+require_once __DIR__ . '/audit-logger.php';
+require_once __DIR__ . '/validators.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = isset($_GET['path']) ? $_GET['path'] : '';
 $input = json_decode(file_get_contents('php://input'), true);
+
+// Obtener usuario autenticado (si existe) del header o session
+$currentUserId = $_SERVER['HTTP_X_USER_ID'] ?? null;
 
 // Log para debug (quitar en producción)
 // error_log("API Request: $method $path " . json_encode($input));
@@ -62,6 +88,12 @@ try {
                 }
                 $stmt = $pdo->prepare("DELETE FROM companies WHERE id = ?");
                 $stmt->execute([$id]);
+
+                // Auditoría
+                if ($currentUserId) {
+                    logAudit($pdo, $currentUserId, 'delete', 'companies', $id);
+                }
+
                 echo json_encode(['success' => true]);
             }
             break;
@@ -217,11 +249,14 @@ try {
                 try {
                     $pdo->beginTransaction();
 
+                    // Hashear el PIN antes de guardarlo
+                    $hashedPin = password_hash($input['pin'], PASSWORD_BCRYPT);
+
                     $stmt = $pdo->prepare("INSERT INTO users (id, name, pin, profile, deptId, companyId, role) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['id'],
                         $input['name'],
-                        $input['pin'],
+                        $hashedPin,
                         $input['profile'] ?? '',
                         $input['deptId'] ?: null,
                         $input['companyId'] ?: null,
@@ -242,6 +277,14 @@ try {
                         }
                     }
 
+                    // Auditoría
+                    if ($currentUserId) {
+                        logAudit($pdo, $currentUserId, 'create', 'users', $input['id'], [
+                            'name' => $input['name'],
+                            'role' => $input['role'] ?? 'user'
+                        ]);
+                    }
+
                     $pdo->commit();
                     echo json_encode(['success' => true, 'id' => $input['id']]);
                 } catch (Exception $e) {
@@ -258,10 +301,13 @@ try {
                 try {
                     $pdo->beginTransaction();
 
+                    // Hashear el PIN antes de guardarlo
+                    $hashedPin = password_hash($input['pin'], PASSWORD_BCRYPT);
+
                     $stmt = $pdo->prepare("UPDATE users SET name = ?, pin = ?, profile = ?, deptId = ?, companyId = ?, role = ? WHERE id = ?");
                     $stmt->execute([
                         $input['name'],
-                        $input['pin'],
+                        $hashedPin,
                         $input['profile'] ?? '',
                         $input['deptId'] ?: null,
                         $input['companyId'] ?: null,
@@ -305,6 +351,11 @@ try {
                     echo json_encode(['error' => 'ID requerido']);
                     break;
                 }
+                // Auditoría antes de eliminar
+                if ($currentUserId) {
+                    logAudit($pdo, $currentUserId, 'delete', 'users', $id);
+                }
+
                 // Las FK con CASCADE eliminan las relaciones automáticamente
                 $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
                 echo json_encode(['success' => true]);
@@ -318,20 +369,52 @@ try {
                 echo json_encode($stmt->fetchAll());
             } elseif ($method === 'POST') {
                 // Verificar datos requeridos
-                if (empty($input['id']) || empty($input['userId']) || empty($input['projectId']) || 
+                if (empty($input['id']) || empty($input['userId']) || empty($input['projectId']) ||
                     empty($input['taskId']) || empty($input['date'])) {
                     http_response_code(400);
                     echo json_encode(['error' => 'Faltan campos requeridos', 'received' => $input]);
                     break;
                 }
-                
+
+                // Validar horas
+                $hoursValidation = Validators::validateHours($input['hours'] ?? 0);
+                if (!$hoursValidation['valid']) {
+                    http_response_code(400);
+                    echo json_encode(['error' => $hoursValidation['error']]);
+                    break;
+                }
+
+                // Validar fecha
+                $dateValidation = Validators::validateDate($input['date'], false);
+                if (!$dateValidation['valid']) {
+                    http_response_code(400);
+                    echo json_encode(['error' => $dateValidation['error']]);
+                    break;
+                }
+
+                // Validar que el proyecto esté activo
+                $projectValidation = Validators::validateProjectStatus($pdo, $input['projectId']);
+                if (!$projectValidation['valid']) {
+                    http_response_code(400);
+                    echo json_encode(['error' => $projectValidation['error']]);
+                    break;
+                }
+
+                // Validar acceso del usuario al proyecto
+                $accessValidation = Validators::validateUserProjectAccess($pdo, $input['userId'], $input['projectId']);
+                if (!$accessValidation['valid']) {
+                    http_response_code(403);
+                    echo json_encode(['error' => $accessValidation['error']]);
+                    break;
+                }
+
                 $stmt = $pdo->prepare("INSERT INTO entries (id, userId, projectId, taskId, date, hours) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([
-                    $input['id'], 
-                    $input['userId'], 
-                    $input['projectId'], 
-                    $input['taskId'], 
-                    $input['date'], 
+                    $input['id'],
+                    $input['userId'],
+                    $input['projectId'],
+                    $input['taskId'],
+                    $input['date'],
                     $input['hours'] ?? 0
                 ]);
                 echo json_encode(['success' => true, 'id' => $input['id']]);
@@ -341,13 +424,16 @@ try {
                     echo json_encode(['error' => 'ID requerido']);
                     break;
                 }
-                // Validar rango de horas
+
+                // Validar horas
                 $hours = isset($input['hours']) ? floatval($input['hours']) : 0;
-                if ($hours < 0 || $hours > 24) {
+                $hoursValidation = Validators::validateHours($hours);
+                if (!$hoursValidation['valid']) {
                     http_response_code(400);
-                    echo json_encode(['error' => 'Las horas deben estar entre 0 y 24']);
+                    echo json_encode(['error' => $hoursValidation['error']]);
                     break;
                 }
+
                 $stmt = $pdo->prepare("UPDATE entries SET hours = ? WHERE id = ?");
                 $stmt->execute([$hours, $input['id']]);
                 if ($stmt->rowCount() === 0) {
@@ -372,24 +458,34 @@ try {
         // ========== AUTH ==========
         case 'login':
             if ($method === 'POST') {
-                // Primero buscar el usuario por ID
+                // Verificar rate limiting
+                require_once __DIR__ . '/rate-limiter.php';
+                $rateLimiter = new RateLimiter($pdo);
+
+                $identifier = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                if (!$rateLimiter->checkLimit($identifier, 'login')) {
+                    http_response_code(429);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'Demasiados intentos. Intenta de nuevo en unos minutos.'
+                    ]);
+                    break;
+                }
+
+                // Buscar el usuario por ID
                 $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
                 $stmt->execute([$input['userId']]);
                 $user = $stmt->fetch();
 
                 if ($user) {
-                    // Verificar el PIN: soporta bcrypt (para Admin) o texto plano (para otros)
-                    $pinValid = false;
-
-                    // Si el PIN almacenado empieza con $2y$, es bcrypt
-                    if (strpos($user['pin'], '$2y$') === 0) {
-                        $pinValid = password_verify($input['pin'], $user['pin']);
-                    } else {
-                        // Comparación directa para PINs en texto plano
-                        $pinValid = ($input['pin'] === $user['pin']);
-                    }
+                    // Verificar el PIN usando bcrypt
+                    $pinValid = password_verify($input['pin'], $user['pin']);
 
                     if ($pinValid) {
+                        // Login exitoso - resetear contador
+                        $rateLimiter->resetLimit($identifier, 'login');
+
+                        // Cargar relaciones
                         $stmt2 = $pdo->prepare("SELECT projectId FROM user_projects WHERE userId = ?");
                         $stmt2->execute([$user['id']]);
                         $user['projects'] = $stmt2->fetchAll(PDO::FETCH_COLUMN);
@@ -398,11 +494,19 @@ try {
                         $stmt3->execute([$user['id']]);
                         $user['managedDepts'] = $stmt3->fetchAll(PDO::FETCH_COLUMN);
 
+                        // Registrar auditoría
+                        require_once __DIR__ . '/audit-logger.php';
+                        logAudit($pdo, $user['id'], 'login', 'users', null, ['ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+
                         echo json_encode(['success' => true, 'user' => $user]);
                     } else {
+                        // Login fallido
+                        $rateLimiter->recordAttempt($identifier, 'login');
                         echo json_encode(['success' => false, 'error' => 'Credenciales incorrectas']);
                     }
                 } else {
+                    // Usuario no existe
+                    $rateLimiter->recordAttempt($identifier, 'login');
                     echo json_encode(['success' => false, 'error' => 'Credenciales incorrectas']);
                 }
             }
@@ -442,11 +546,47 @@ try {
     }
     
 } catch (PDOException $e) {
+    // Log completo del error
+    error_log('Database error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+
+    // Respuesta según el entorno
+    $isDebug = env('APP_DEBUG', false);
+
     http_response_code(500);
-    echo json_encode([
-        'error' => 'Error de base de datos',
-        'message' => $e->getMessage(),
-        'code' => $e->getCode()
-    ]);
+
+    if ($isDebug) {
+        // En modo debug, mostrar detalles
+        echo json_encode([
+            'error' => 'Error de base de datos',
+            'message' => $e->getMessage(),
+            'code' => $e->getCode(),
+            'trace' => $e->getTrace()
+        ]);
+    } else {
+        // En producción, mensaje genérico
+        echo json_encode([
+            'error' => 'Error interno del servidor',
+            'message' => 'Ha ocurrido un error. Por favor contacte al administrador.'
+        ]);
+    }
+} catch (Exception $e) {
+    // Catch general para otros errores
+    error_log('General error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+
+    $isDebug = env('APP_DEBUG', false);
+    http_response_code(500);
+
+    if ($isDebug) {
+        echo json_encode([
+            'error' => 'Error del servidor',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTrace()
+        ]);
+    } else {
+        echo json_encode([
+            'error' => 'Error interno del servidor',
+            'message' => 'Ha ocurrido un error inesperado.'
+        ]);
+    }
 }
 ?>

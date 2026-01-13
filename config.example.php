@@ -1,17 +1,18 @@
 <?php
 /**
  * Time Tracker - Configuración de Base de Datos (MySQL)
- * Usa variables de entorno desde .env
+ *
+ * INSTRUCCIONES:
+ * 1. Copiar este archivo como config.php
+ * 2. Editar las variables con tus credenciales reales
+ * 3. NO subir config.php al repositorio (está en .gitignore)
  */
 
-// Cargar variables de entorno
-require_once __DIR__ . '/env-loader.php';
-
-$db_host = env('DB_HOST', 'localhost');
-$db_name = env('DB_NAME', 'timetracker');
-$db_user = env('DB_USER', 'timetracker_user');
-$db_pass = env('DB_PASS', 'TuPasswordSeguro123!');
-$db_charset = env('DB_CHARSET', 'utf8mb4');
+$db_host = 'localhost';             // Host del servidor MySQL
+$db_name = 'timetracker';           // Nombre de la base de datos
+$db_user = 'timetracker_user';      // Usuario MySQL
+$db_pass = 'CAMBIAR_PASSWORD_AQUI'; // Contraseña del usuario
+$db_charset = 'utf8mb4';
 
 // No modificar a partir de aquí
 try {
@@ -26,7 +27,7 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    // Log error sin exponer detalles
+    // En producción, no mostrar detalles del error
     error_log('Database connection error: ' . $e->getMessage());
     http_response_code(500);
     die(json_encode(['error' => 'Error de conexión a la base de datos']));

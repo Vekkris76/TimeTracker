@@ -3,8 +3,9 @@ tmpclaude-*
 *.tmp
 *.temp
 
-# Configuración sensible (descomentar si contiene credenciales)
-# config.php
+# Configuración sensible
+config.php
+.env
 
 # Archivos del sistema
 .DS_Store
@@ -22,8 +23,10 @@ desktop.ini
 # Archivos ZIP
 *.zip
 
-# Node modules si se añade Node.js en el futuro
+# Dependencies
 node_modules/
+vendor/
+composer.lock
 
 # IDE
 .vscode/

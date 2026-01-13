@@ -1,4 +1,9 @@
-# TimeTracker v2.0.4 - Manual de Instalación y Uso
+# TimeTracker v2.1.0 - Manual de Instalación y Uso
+
+> **Versión 2.1.0 - Mejoras de Seguridad y Arquitectura**
+>
+> Esta versión incluye importantes mejoras de seguridad, validaciones y sistema de auditoría.
+> Ver [SECURITY.md](SECURITY.md) para detalles completos.
 
 ## 📋 Índice
 
@@ -17,7 +22,7 @@
 
 ## 📖 Descripción General
 
-**TimeTracker v2.0.4** es una aplicación web de seguimiento de tiempo diseñada para uso corporativo interno. Permite a los usuarios registrar horas trabajadas en diferentes proyectos y tareas, con funcionalidades de reporting y análisis para managers y administradores.
+**TimeTracker v2.1.0** es una aplicación web de seguimiento de tiempo diseñada para uso corporativo interno. Permite a los usuarios registrar horas trabajadas en diferentes proyectos y tareas, con funcionalidades de reporting y análisis para managers y administradores.
 
 ### Características Principales
 
@@ -28,6 +33,17 @@
 - ✅ Exportación a Excel
 - ✅ Diseño responsive
 - ✅ Sin dependencias de frameworks (JavaScript vanilla)
+
+### Nuevas Características v2.1.0 🔒
+
+- ✅ **Sistema de variables de entorno** (.env)
+- ✅ **Autenticación con hash bcrypt** (PINs seguros)
+- ✅ **Protección contra fuerza bruta** (rate limiting)
+- ✅ **CORS restringido** a dominio interno
+- ✅ **Sistema de auditoría completo** (logs de todas las acciones)
+- ✅ **Validaciones de negocio** mejoradas
+- ✅ **Gestión de errores** según entorno
+- ✅ **Composer** para gestión de dependencias
 
 ---
 
