@@ -50,6 +50,6 @@ function env($key, $default = null) {
     return $value;
 }
 
-// Load .env file from current directory
-loadEnv(__DIR__ . '/.env');
+// Load .env file from config directory
+loadEnv(__DIR__ . '/../../config/.env');
 ?>

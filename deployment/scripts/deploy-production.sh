@@ -34,8 +34,8 @@ mkdir -p "$BACKUP_DIR"
 
 # Backup database
 echo "  - Backing up database..."
-if [ -f "$DEPLOY_DIR/.env" ]; then
-    source "$DEPLOY_DIR/.env"
+if [ -f "$DEPLOY_DIR/app/config/.env" ]; then
+    source "$DEPLOY_DIR/app/config/.env"
     mysqldump -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" > "$BACKUP_DIR/db_pre_deploy_${TIMESTAMP}.sql"
     echo -e "${GREEN}  ✓ Database backed up${NC}"
 else
@@ -58,12 +58,12 @@ echo -e "${GREEN}  ✓ Code updated${NC}"
 # Step 3: Check .env file
 echo ""
 echo -e "${YELLOW}[3/8] Checking environment configuration...${NC}"
-if [ ! -f "$DEPLOY_DIR/.env" ]; then
+if [ ! -f "$DEPLOY_DIR/app/config/.env" ]; then
     echo -e "${RED}  ✗ .env file not found${NC}"
     echo ""
     echo "Please create .env file:"
-    echo "  1. Copy from template: cp .env.example .env"
-    echo "  2. Edit with your credentials: nano .env"
+    echo "  1. Copy from template: cp app/config/.env.example app/config/.env"
+    echo "  2. Edit with your credentials: nano app/config/.env"
     echo "  3. Set APP_ENV=production"
     echo "  4. Set APP_DEBUG=false"
     echo ""
@@ -72,7 +72,7 @@ if [ ! -f "$DEPLOY_DIR/.env" ]; then
 fi
 
 # Verify production settings
-if ! grep -q "^APP_ENV=production" .env; then
+if ! grep -q "^APP_ENV=production" app/config/.env; then
     echo -e "${YELLOW}  ⚠ APP_ENV is not set to 'production'${NC}"
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo
@@ -81,7 +81,7 @@ if ! grep -q "^APP_ENV=production" .env; then
     fi
 fi
 
-if grep -q "^APP_DEBUG=true" .env; then
+if grep -q "^APP_DEBUG=true" app/config/.env; then
     echo -e "${RED}  ✗ APP_DEBUG is set to 'true' (security risk!)${NC}"
     read -p "Continue anyway? (NOT RECOMMENDED) (y/N): " -n 1 -r
     echo
@@ -97,7 +97,7 @@ echo ""
 echo -e "${YELLOW}[4/8] Setting file permissions...${NC}"
 chown -R www-data:www-data "$DEPLOY_DIR"
 chmod -R 755 "$DEPLOY_DIR"
-chmod 600 "$DEPLOY_DIR/.env"
+chmod 600 "$DEPLOY_DIR/app/config/.env"
 echo -e "${GREEN}  ✓ Permissions set${NC}"
 
 # Step 5: Run migrations
@@ -105,24 +105,24 @@ echo ""
 echo -e "${YELLOW}[5/8] Running database migrations...${NC}"
 
 # Check if migration is needed
-if [ -f "$DEPLOY_DIR/migrate-pins.php" ]; then
+if [ -f "$DEPLOY_DIR/app/src/Database/migrate-pins.php" ]; then
     # Check if already migrated
-    source "$DEPLOY_DIR/.env"
+    source "$DEPLOY_DIR/app/config/.env"
     HASHED_COUNT=$(mysql -u"$DB_USER" -p"$DB_PASS" -D"$DB_NAME" -se "SELECT COUNT(*) FROM users WHERE pin LIKE '\$2y\$%';" 2>/dev/null || echo "0")
 
     if [ "$HASHED_COUNT" -eq 0 ]; then
         echo "  - Migrating PINs to bcrypt..."
         cd "$DEPLOY_DIR"
-        php migrate-pins.php
+        php app/src/Database/migrate-pins.php
         echo -e "${GREEN}  ✓ PIN migration completed${NC}"
 
         echo "  - Removing migration script..."
-        rm -f migrate-pins.php
+        rm -f app/src/Database/migrate-pins.php
         echo -e "${GREEN}  ✓ Migration script removed${NC}"
     else
         echo -e "${GREEN}  ✓ PINs already migrated (skipping)${NC}"
         echo "  - Removing migration script..."
-        rm -f migrate-pins.php
+        rm -f app/src/Database/migrate-pins.php
     fi
 else
     echo -e "${GREEN}  ✓ No migrations needed${NC}"
@@ -131,7 +131,7 @@ fi
 # Step 6: Clean up sensitive files
 echo ""
 echo -e "${YELLOW}[6/8] Cleaning up sensitive files...${NC}"
-FILES_TO_REMOVE=("setup.php" "test_login.php" "migrate-pins.php")
+FILES_TO_REMOVE=("setup.php" "test_login.php" "app/src/Database/migrate-pins.php")
 
 for file in "${FILES_TO_REMOVE[@]}"; do
     if [ -f "$DEPLOY_DIR/$file" ]; then
@@ -180,7 +180,7 @@ else
 fi
 
 # Test database connection
-source "$DEPLOY_DIR/.env"
+source "$DEPLOY_DIR/app/config/.env"
 if mysql -u"$DB_USER" -p"$DB_PASS" -D"$DB_NAME" -e "SELECT 1;" &>/dev/null; then
     echo -e "${GREEN}  ✓ Database connection OK${NC}"
 else
@@ -188,7 +188,7 @@ else
 fi
 
 # Test API
-if curl -s "http://localhost/api.php?path=all" | grep -q "companies"; then
+if curl -s "http://localhost/app/public/api.php?path=all" | grep -q "companies"; then
     echo -e "${GREEN}  ✓ API is responding${NC}"
 else
     echo -e "${YELLOW}  ⚠ API test failed (check manually)${NC}"

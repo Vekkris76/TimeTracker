@@ -21,7 +21,7 @@ set SERVER=192.168.11.39
 set USER=miguel
 set PASSWORD=Mg137Pz248$
 set REMOTE_PATH=/var/www/timetracker
-set LOCAL_PATH=%~dp0
+set LOCAL_PATH=%~dp0..
 
 :MENU
 cls
@@ -66,45 +66,27 @@ echo =========================================================
 echo   SUBIR ARCHIVOS AL SERVIDOR (DEPLOY v2.1.0)
 echo =========================================================
 echo.
-echo Esta operacion subira los siguientes archivos:
-echo   Core:
-echo     - index.html
-echo     - api.php
-echo.
-echo   Seguridad (NUEVOS en v2.1.0):
-echo     - env-loader.php
-echo     - rate-limiter.php
-echo     - audit-logger.php
-echo     - validators.php
-echo     - migrate-pins.php
-echo.
-echo   Configuracion:
-echo     - config.php
-echo     - .env.example
-echo     - config.example.php
-echo     - timetracker.nginx.conf
-echo.
-echo   Documentacion:
-echo     - README.md
-echo     - CHANGELOG.md
-echo     - SECURITY.md
-echo     - UPGRADE_v2.1.0.md
-echo.
-echo   Scripts de despliegue:
-echo     - pre-deploy.sh
-echo     - deploy-production.sh
-echo     - post-deploy-check.sh
+echo Esta operacion subira la estructura organizada:
+echo   app/public/
+echo     - index.html, api.php
+echo   app/config/
+echo     - config.php, .env.example, composer.json
+echo   app/src/Security/
+echo     - env-loader.php, rate-limiter.php, etc.
+echo   deployment/scripts/
+echo     - pre-deploy.sh, deploy-production.sh, post-deploy-check.sh
+echo   docs/
+echo     - Toda la documentacion
 echo.
 echo IMPORTANTE:
 echo   - Se creara un backup automatico en el servidor
-echo   - config.php se actualizara con credenciales de produccion
-echo   - .env NO se sube (debes crearlo manualmente en el servidor)
+echo   - .env NO se sube (debes crearlo manualmente)
 echo   - Despues del deploy ejecuta migrate-pins.php UNA VEZ
 echo.
 set /p CONFIRMAR="Continuar? (S/N): "
 if /i not "%CONFIRMAR%"=="S" goto MENU
 
-REM Verificar si existen las herramientas de PuTTY
+REM Verificar herramientas
 where pscp.exe >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     if not exist "pscp.exe" (
@@ -125,9 +107,6 @@ if %ERRORLEVEL% NEQ 0 (
         echo.
         echo ERROR: No se encuentra plink.exe
         echo.
-        echo Descarga PuTTY tools desde: https://www.putty.org/
-        echo O coloca pscp.exe y plink.exe en la carpeta actual
-        echo.
         pause
         goto MENU
     )
@@ -138,63 +117,44 @@ echo Iniciando despliegue...
 echo.
 
 REM Crear backup en el servidor
-echo [1/5] Creando backup en el servidor...
-plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && mkdir -p backups && tar -czf backups/backup_$(date +%%Y%%m%%d_%%H%%M%%S).tar.gz index.html api.php config.php CHANGELOG.md 2>/dev/null || true"
+echo [1/6] Creando backup en el servidor...
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && mkdir -p backups && tar -czf backups/backup_$(date +%%Y%%m%%d_%%H%%M%%S).tar.gz app/ docs/ 2>/dev/null || true"
 if %ERRORLEVEL% EQU 0 (
     echo   [OK] Backup creado
 ) else (
     echo   [WARNING] No se pudo crear backup - continuando...
 )
 
-REM Subir archivos core
+REM Subir estructura app/
 echo.
-echo [2/5] Subiendo archivos principales...
-pscp -batch -pw %PASSWORD% index.html %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% api.php %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% config.php %USER%@%SERVER%:%REMOTE_PATH%/
+echo [2/6] Subiendo aplicacion (app/)...
+pscp -batch -r -pw %PASSWORD% "%LOCAL_PATH%\app" %USER%@%SERVER%:%REMOTE_PATH%/
 
-REM Subir archivos de seguridad (NUEVOS)
+REM Subir deployment/
 echo.
-echo [3/5] Subiendo archivos de seguridad (v2.1.0)...
-pscp -batch -pw %PASSWORD% env-loader.php %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% rate-limiter.php %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% audit-logger.php %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% validators.php %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% migrate-pins.php %USER%@%SERVER%:%REMOTE_PATH%/
+echo [3/6] Subiendo scripts de deployment...
+pscp -batch -r -pw %PASSWORD% "%LOCAL_PATH%\deployment" %USER%@%SERVER%:%REMOTE_PATH%/
 
-REM Subir archivos de configuracion
+REM Subir docs/
 echo.
-echo [4/5] Subiendo archivos de configuracion...
-pscp -batch -pw %PASSWORD% .env.example %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% config.example.php %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% timetracker.nginx.conf %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% composer.json %USER%@%SERVER%:%REMOTE_PATH%/
+echo [4/6] Subiendo documentacion...
+pscp -batch -r -pw %PASSWORD% "%LOCAL_PATH%\docs" %USER%@%SERVER%:%REMOTE_PATH%/
 
-REM Subir documentacion
+REM Subir docker/ y archivos raiz
 echo.
-echo [5/5] Subiendo documentacion y scripts...
-pscp -batch -pw %PASSWORD% README.md %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% CHANGELOG.md %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% SECURITY.md %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% UPGRADE_v2.1.0.md %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% PRODUCTION_CHECKLIST.md %USER%@%SERVER%:%REMOTE_PATH%/
-
-REM Subir scripts de despliegue
-pscp -batch -pw %PASSWORD% pre-deploy.sh %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% deploy-production.sh %USER%@%SERVER%:%REMOTE_PATH%/
-pscp -batch -pw %PASSWORD% post-deploy-check.sh %USER%@%SERVER%:%REMOTE_PATH%/
-
-REM Actualizar credenciales en el servidor
-echo.
-echo Configurando credenciales de produccion...
-plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sed -i 's/localhost/localhost/g' config.php"
+echo [5/6] Subiendo configuracion Docker...
+pscp -batch -r -pw %PASSWORD% "%LOCAL_PATH%\docker" %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% "%LOCAL_PATH%\docker-compose.yml" %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% "%LOCAL_PATH%\Dockerfile" %USER%@%SERVER%:%REMOTE_PATH%/
+pscp -batch -pw %PASSWORD% "%LOCAL_PATH%\.gitignore" %USER%@%SERVER%:%REMOTE_PATH%/
 
 REM Establecer permisos
-echo Estableciendo permisos...
-plink -batch -pw %PASSWORD% %USER%@%SERVER% "sudo chown -R www-data:www-data %REMOTE_PATH% && sudo chmod -R 755 %REMOTE_PATH%"
+echo.
+echo [6/6] Estableciendo permisos...
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "sudo chown -R www-data:www-data %REMOTE_PATH% && sudo chmod -R 755 %REMOTE_PATH% && sudo chmod 600 %REMOTE_PATH%/app/config/.env 2>/dev/null || true"
 
 REM Hacer ejecutables los scripts
-plink -batch -pw %PASSWORD% %USER%@%SERVER% "chmod +x %REMOTE_PATH%/pre-deploy.sh %REMOTE_PATH%/deploy-production.sh %REMOTE_PATH%/post-deploy-check.sh"
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "chmod +x %REMOTE_PATH%/deployment/scripts/*.sh"
 
 echo.
 echo =========================================================
@@ -212,23 +172,23 @@ echo 2. Ir al directorio:
 echo    cd %REMOTE_PATH%
 echo.
 echo 3. Crear archivo .env (si no existe):
-echo    cp .env.example .env
-echo    nano .env
+echo    cp app/config/.env.example app/config/.env
+echo    nano app/config/.env
 echo    (Configurar DB_*, APP_ENV=production, APP_DEBUG=false)
 echo.
 echo 4. Ejecutar migracion de PINs (SOLO UNA VEZ):
-echo    php migrate-pins.php
+echo    php app/src/Database/migrate-pins.php
 echo.
 echo 5. Eliminar script de migracion:
-echo    rm migrate-pins.php
+echo    rm app/src/Database/migrate-pins.php
 echo.
 echo 6. Verificar deployment:
-echo    sudo bash post-deploy-check.sh
+echo    sudo bash deployment/scripts/post-deploy-check.sh
 echo.
 echo 7. Reiniciar servicios:
 echo    sudo systemctl restart php8.3-fpm nginx
 echo.
-echo Ver UPGRADE_v2.1.0.md y SECURITY.md para mas detalles.
+echo Ver docs/UPGRADE_v2.1.0.md y docs/SECURITY.md para mas detalles.
 echo.
 pause
 goto MENU
@@ -265,30 +225,17 @@ REM Obtener fecha/hora para el nombre de carpeta
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
 set BACKUP_FOLDER=backup_%datetime:~0,8%_%datetime:~8,6%
 
-mkdir "%LOCAL_PATH%%BACKUP_FOLDER%"
+mkdir "%LOCAL_PATH%\%BACKUP_FOLDER%"
 
 echo.
 echo Descargando archivos...
 echo.
 
-REM Descargar archivos principales
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/index.html "%LOCAL_PATH%%BACKUP_FOLDER%\"
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/api.php "%LOCAL_PATH%%BACKUP_FOLDER%\"
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/config.php "%LOCAL_PATH%%BACKUP_FOLDER%\"
-
-REM Descargar archivos de seguridad
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/env-loader.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/rate-limiter.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/audit-logger.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/validators.php "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
-
-REM Descargar archivos de configuracion
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/.env "%LOCAL_PATH%%BACKUP_FOLDER%\" 2>nul
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/timetracker.nginx.conf "%LOCAL_PATH%%BACKUP_FOLDER%\"
-
-REM Descargar documentacion
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/README.md "%LOCAL_PATH%%BACKUP_FOLDER%\"
-pscp -batch -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/CHANGELOG.md "%LOCAL_PATH%%BACKUP_FOLDER%\"
+REM Descargar estructura completa
+pscp -batch -r -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/app "%LOCAL_PATH%\%BACKUP_FOLDER%\"
+pscp -batch -r -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/deployment "%LOCAL_PATH%\%BACKUP_FOLDER%\"
+pscp -batch -r -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/docs "%LOCAL_PATH%\%BACKUP_FOLDER%\"
+pscp -batch -r -pw %PASSWORD% %USER%@%SERVER%:%REMOTE_PATH%/docker "%LOCAL_PATH%\%BACKUP_FOLDER%\"
 
 echo.
 echo =========================================================
@@ -296,7 +243,7 @@ echo   BACKUP LOCAL COMPLETADO
 echo =========================================================
 echo.
 echo Archivos descargados en:
-echo %LOCAL_PATH%%BACKUP_FOLDER%\
+echo %LOCAL_PATH%\%BACKUP_FOLDER%\
 echo.
 pause
 goto MENU
@@ -311,7 +258,7 @@ echo.
 echo Este script verificara que el servidor esta listo para
 echo el despliegue de v2.1.0
 echo.
-plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sudo bash pre-deploy.sh"
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sudo bash deployment/scripts/pre-deploy.sh"
 echo.
 pause
 goto MENU
@@ -325,7 +272,7 @@ echo =========================================================
 echo.
 echo Este script verificara que el despliegue fue exitoso
 echo.
-plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sudo bash post-deploy-check.sh"
+plink -batch -pw %PASSWORD% %USER%@%SERVER% "cd %REMOTE_PATH% && sudo bash deployment/scripts/post-deploy-check.sh"
 echo.
 pause
 goto MENU

@@ -219,11 +219,11 @@ fi
 
 echo ""
 echo -e "${YELLOW}[9/10] Checking Migration Scripts...${NC}"
-# Check if migrate-pins.php exists (should be deleted after use)
-if [ -f "migrate-pins.php" ]; then
-    check_warn "migrate-pins.php still exists (should be deleted after migration)"
+# Check if app/src/Database/migrate-pins.php exists (should be deleted after use)
+if [ -f "app/src/Database/migrate-pins.php" ]; then
+    check_warn "app/src/Database/migrate-pins.php still exists (should be deleted after migration)"
 else
-    check_pass "migrate-pins.php not found (good if migration already done)"
+    check_pass "app/src/Database/migrate-pins.php not found (good if migration already done)"
 fi
 
 # Check if setup.php exists (should be deleted)

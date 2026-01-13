@@ -4,7 +4,8 @@ tmpclaude-*
 *.temp
 
 # Configuración sensible
-config.php
+app/config/config.php
+app/config/.env
 .env
 
 # Archivos del sistema

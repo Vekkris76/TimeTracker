@@ -82,10 +82,10 @@ for file in "${CRITICAL_FILES[@]}"; do
 done
 
 # Check if sensitive files were removed
-if [ ! -f "migrate-pins.php" ]; then
-    check_pass "migrate-pins.php removed"
+if [ ! -f "app/src/Database/migrate-pins.php" ]; then
+    check_pass "app/src/Database/migrate-pins.php removed"
 else
-    check_warn "migrate-pins.php still exists (should be deleted)"
+    check_warn "app/src/Database/migrate-pins.php still exists (should be deleted)"
 fi
 
 if [ ! -f "setup.php" ]; then
@@ -180,7 +180,7 @@ echo ""
 echo -e "${YELLOW}[7/10] Checking API Functionality...${NC}"
 
 # Test /api.php?path=all
-API_RESPONSE=$(curl -s "http://localhost/api.php?path=all" 2>/dev/null)
+API_RESPONSE=$(curl -s "http://localhost/app/public/api.php?path=all" 2>/dev/null)
 if echo "$API_RESPONSE" | grep -q "companies"; then
     check_pass "API endpoint /all is responding"
 else
@@ -215,7 +215,7 @@ else
 fi
 
 # Check CORS configuration
-CORS_HEADER=$(curl -s -I "http://localhost/api.php?path=all" 2>/dev/null | grep -i "Access-Control-Allow-Origin")
+CORS_HEADER=$(curl -s -I "http://localhost/app/public/api.php?path=all" 2>/dev/null | grep -i "Access-Control-Allow-Origin")
 if [ -n "$CORS_HEADER" ]; then
     check_pass "CORS headers configured"
 else
@@ -258,7 +258,7 @@ echo -e "${YELLOW}[10/10] Checking Performance...${NC}"
 
 # Test response time
 START=$(date +%s%N)
-curl -s "http://localhost/api.php?path=all" > /dev/null 2>&1
+curl -s "http://localhost/app/public/api.php?path=all" > /dev/null 2>&1
 END=$(date +%s%N)
 RESPONSE_TIME=$(( (END - START) / 1000000 ))
 

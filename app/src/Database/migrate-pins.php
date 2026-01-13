@@ -8,7 +8,7 @@
  * 3. Eliminar este archivo después de ejecutar
  */
 
-require_once 'config.php';
+require_once __DIR__ . '/../../config/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

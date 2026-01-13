@@ -7,7 +7,7 @@
 header('Content-Type: application/json; charset=utf-8');
 
 // CORS: Restringir a dominio interno (cambiar según tu configuración)
-require_once __DIR__ . '/env-loader.php';
+require_once __DIR__ . '/../src/Security/env-loader.php';
 $allowedOrigin = env('APP_DOMAIN', 'timetracker.resol.dom');
 
 // Verificar el origen de la petición
@@ -34,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-require_once 'config.php';
-require_once __DIR__ . '/audit-logger.php';
-require_once __DIR__ . '/validators.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../src/Security/audit-logger.php';
+require_once __DIR__ . '/../src/Security/validators.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = isset($_GET['path']) ? $_GET['path'] : '';
@@ -459,7 +459,7 @@ try {
         case 'login':
             if ($method === 'POST') {
                 // Verificar rate limiting
-                require_once __DIR__ . '/rate-limiter.php';
+                require_once __DIR__ . '/../src/Security/rate-limiter.php';
                 $rateLimiter = new RateLimiter($pdo);
 
                 $identifier = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -495,7 +495,7 @@ try {
                         $user['managedDepts'] = $stmt3->fetchAll(PDO::FETCH_COLUMN);
 
                         // Registrar auditoría
-                        require_once __DIR__ . '/audit-logger.php';
+                        require_once __DIR__ . '/../src/Security/audit-logger.php';
                         logAudit($pdo, $user['id'], 'login', 'users', null, ['ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
 
                         echo json_encode(['success' => true, 'user' => $user]);
