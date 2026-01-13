@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Time Tracker v2.0.4</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root{--primary:#0f172a;--accent:#6366f1;--accent-light:#818cf8;--success:#10b981;--success-light:#d1fae5;--warning:#f59e0b;--danger:#ef4444;--bg:#fff;--bg-subtle:#f8fafc;--bg-muted:#f1f5f9;--text:#0f172a;--text-secondary:#64748b;--text-muted:#94a3b8;--border:#e2e8f0;--radius:8px}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-subtle);color:var(--text);line-height:1.5;min-height:100vh}
+        .login-screen{display:flex;flex-direction:column;min-height:100vh;background:linear-gradient(160deg,#ffffff 0%,#f0fdf4 40%,#dcfce7 70%,rgba(167,243,208,0.4) 100%)}
+        .login-main{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
+        .login-card{background:rgba(255,255,255,0.85);backdrop-filter:blur(10px);padding:2.5rem;border-radius:16px;border:1px solid rgba(16,185,129,0.1);box-shadow:0 4px 24px rgba(0,0,0,0.04);width:100%;max-width:360px}
+        .login-card h1{font-size:1.375rem;text-align:center;margin-bottom:.25rem;font-weight:600;color:var(--primary)}
+        .login-card p{text-align:center;color:var(--text-secondary);margin-bottom:2rem;font-size:.8125rem}
+        .login-card .form-group{margin-bottom:1.25rem}
+        .login-card label{display:block;font-size:.75rem;font-weight:500;color:var(--text-secondary);margin-bottom:.375rem;text-transform:uppercase;letter-spacing:.03em}
+        .login-card input,.login-card select{width:100%;padding:.75rem 1rem;border:1px solid var(--border);border-radius:var(--radius);font-size:.9375rem;background:var(--bg);transition:all .15s}
+        .login-card input:focus,.login-card select:focus{outline:none;border-color:var(--success);box-shadow:0 0 0 3px rgba(16,185,129,0.1)}
+        .login-card .btn-login{width:100%;padding:.875rem;background:var(--success);color:#fff;border:none;border-radius:var(--radius);font-size:.9375rem;font-weight:600;cursor:pointer;transition:all .15s}
+        .login-card .btn-login:hover{background:#059669}
+        .login-error{background:rgba(239,68,68,.1);color:var(--danger);padding:.75rem;border-radius:var(--radius);font-size:.8125rem;margin-bottom:1rem;display:none;text-align:center}
+        .app{display:none;flex-direction:column;min-height:100vh}.app.active{display:flex}
+        .header{background:var(--bg);border-bottom:1px solid var(--border);padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+        .header h1{font-size:1rem;font-weight:600}
+        .header-user{display:flex;align-items:center;gap:1rem}
+        .header-user span{font-size:.8125rem;color:var(--text-secondary)}
+        .header-user strong{color:var(--accent)}
+        .btn-logout{padding:.4rem .875rem;background:var(--bg-muted);color:var(--text-secondary);border:none;border-radius:6px;font-size:.75rem;cursor:pointer;transition:all .15s}
+        .btn-logout:hover{background:var(--border);color:var(--text)}
+        .nav-tabs{display:flex;background:var(--bg);border-bottom:1px solid var(--border);padding:0 2rem;gap:.25rem;overflow-x:auto}
+        .nav-tab{padding:.625rem .875rem;cursor:pointer;border:none;background:none;font-size:.8125rem;color:var(--text-secondary);position:relative;font-weight:500;white-space:nowrap}
+        .nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--accent)}
+        .nav-tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--accent)}
+        .nav-tab .badge{background:var(--bg-muted);color:var(--text-secondary);font-size:.6875rem;padding:.125rem .4rem;border-radius:10px;margin-left:.375rem}
+        .main-content{flex:1;padding:1.25rem 2rem;max-width:1600px;margin:0 auto;width:100%}
+        .tab-content{display:none}.tab-content.active{display:block}
+        .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.25rem}
+        .card-header{padding:.875rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+        .card-header h3{font-size:.875rem;font-weight:600}
+        .card-body{padding:1.25rem}
+        .btn{padding:.4rem .875rem;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:.375rem;font-weight:500;transition:all .15s}
+        .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-light)}
+        .btn-ghost{background:transparent;color:var(--text-secondary)}.btn-ghost:hover{background:var(--bg-muted);color:var(--text)}
+        .btn-sm{padding:.3rem .5rem;font-size:.6875rem}
+        .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.75rem;margin-bottom:.75rem}
+        .form-group{display:flex;flex-direction:column;gap:.25rem}
+        .form-group label{font-size:.6875rem;color:var(--text-secondary);font-weight:500;text-transform:uppercase}
+        .form-group input,.form-group select{padding:.4rem .5rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem}
+        .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent)}
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:.75rem}
+        th,td{padding:.5rem .625rem;text-align:left;border-bottom:1px solid var(--border)}
+        th{font-weight:600;color:var(--text-secondary);font-size:.6875rem;text-transform:uppercase;background:var(--bg-subtle)}
+        tr:hover{background:var(--bg-subtle)}
+        .action-btns{display:flex;gap:.25rem}
+        .action-btn{width:26px;height:26px;border:none;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8125rem;background:transparent;color:var(--text-muted)}
+        .action-btn:hover{background:var(--bg-muted);color:var(--text)}
+        .action-btn.delete:hover{background:rgba(239,68,68,.1);color:var(--danger)}
+        /* Timesheet Layout Mejorado */
+        .timesheet-layout{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:start}
+        .timesheet-main{min-width:0}
+        .timesheet-sidebar{width:220px}
+        .timesheet-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
+        .week-nav{display:flex;align-items:center;gap:.5rem}
+        .week-nav button{padding:.35rem .6rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.75rem;transition:all .15s}
+        .week-nav button:hover{border-color:var(--accent);color:var(--accent)}
+        .week-nav .week-label{font-size:.875rem;font-weight:600;min-width:180px;text-align:center}
+        .copy-btns{display:flex;gap:.375rem}
+        .mini-calendar{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.625rem}
+        .mini-calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.375rem}
+        .mini-calendar-header span{font-size:.7rem;font-weight:600}
+        .mini-calendar-header button{background:none;border:none;cursor:pointer;font-size:.7rem;color:var(--text-muted);padding:.2rem}
+        .mini-calendar-header button:hover{color:var(--text)}
+        .mini-calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;font-size:.6rem;text-align:center}
+        .mini-calendar-grid .day-name{color:var(--text-muted);font-weight:500;padding:.2rem 0}
+        .mini-calendar-grid .day{padding:.2rem;border-radius:3px;cursor:pointer}
+        .mini-calendar-grid .day:hover{background:var(--bg-muted)}
+        .mini-calendar-grid .day.other-month{color:var(--text-muted)}
+        .mini-calendar-grid .day.today{background:var(--accent);color:white;font-weight:600}
+        .mini-calendar-grid .day.current-week{background:var(--success-light);color:var(--success)}
+        .mini-calendar-grid .day.today.current-week{background:var(--accent);color:white}
+        .user-info-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-bottom:.75rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
+        .user-info-item{display:flex;flex-direction:column;gap:.1rem}
+        .user-info-item label{font-size:.55rem;text-transform:uppercase;color:var(--text-muted);letter-spacing:.03em}
+        .user-info-item span{font-size:.8rem;font-weight:500;color:var(--text)}
+        .timesheet-table{width:100%;border-collapse:collapse}
+        .timesheet-table th,.timesheet-table td{padding:.35rem;text-align:center;border:1px solid var(--border)}
+        .timesheet-table th{background:var(--bg-subtle);font-size:.65rem;text-transform:uppercase}
+        .timesheet-table th.project-header{text-align:left;min-width:120px}
+        .timesheet-table th.task-header{text-align:left;min-width:80px}
+        .timesheet-table td.project-cell{text-align:left;font-weight:500;font-size:.7rem}
+        .timesheet-table td.task-cell{text-align:left;font-size:.7rem}
+        .timesheet-table .time-input{width:42px;padding:.25rem;text-align:center;border:1px solid var(--border);border-radius:4px;font-size:.75rem}
+        .timesheet-table .time-input:focus{outline:none;border-color:var(--accent)}
+        .timesheet-table .row-total{font-weight:600;background:var(--bg-subtle);font-size:.75rem}
+        .timesheet-table .day-total{font-weight:600;background:rgba(99,102,241,.05)}
+        .timesheet-table .grand-total{font-weight:700;background:rgba(99,102,241,.1);color:var(--accent)}
+        .timesheet-table .add-row td{padding:.5rem;background:var(--bg-subtle)}
+        .timesheet-table .remove-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.8rem}
+        .timesheet-table .remove-btn:hover{color:var(--danger)}
+        .timesheet-selects{display:flex;gap:.4rem;flex-wrap:wrap}
+        .timesheet-selects select{padding:.25rem .35rem;border:1px solid var(--border);border-radius:4px;font-size:.7rem}
+        .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.75rem;margin-bottom:1rem}
+        .kpi-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.625rem}
+        .kpi-card.accent{border-left:3px solid var(--accent)}.kpi-card.success{border-left:3px solid var(--success)}.kpi-card.warning{border-left:3px solid var(--warning)}
+        .kpi-label{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.1rem}
+        .kpi-value{font-size:1.125rem;font-weight:700;color:var(--primary)}
+        /* Filters con Checkboxes */
+        .filters-row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem}
+        .filter-group{display:flex;flex-direction:column;gap:.2rem}
+        .filter-group label{font-size:.6rem;color:var(--text-secondary);font-weight:500;text-transform:uppercase}
+        .filter-group select,.filter-group input[type="date"]{padding:.3rem .4rem;border:1px solid var(--border);border-radius:6px;font-size:.7rem;min-width:90px}
+        .filter-checkboxes{display:flex;flex-direction:column;gap:.2rem;max-height:80px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:.3rem;background:var(--bg);min-width:120px}
+        .filter-checkbox{display:flex;align-items:center;gap:.25rem;font-size:.65rem;cursor:pointer;padding:.15rem .2rem;border-radius:3px}
+        .filter-checkbox:hover{background:var(--bg-subtle)}
+        .filter-checkbox input{margin:0;cursor:pointer}
+        .chart-section{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+        .chart-section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem}
+        .chart-section-title{font-size:.8rem;font-weight:600}
+        .chart-legend{display:flex;gap:.5rem;flex-wrap:wrap;font-size:.55rem}
+        .chart-legend-item{display:flex;align-items:center;gap:.2rem}
+        .chart-legend-color{width:8px;height:8px;border-radius:2px}
+        .monthly-chart{position:relative;height:220px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border)}
+        .monthly-chart-y{position:absolute;left:0;top:0;bottom:18px;width:32px;display:flex;flex-direction:column;justify-content:space-between;padding:.2rem 0;font-size:.5rem;color:var(--text-muted);text-align:right;padding-right:.25rem}
+        .monthly-chart-x{position:absolute;left:32px;right:0;bottom:0;height:18px;display:flex;font-size:.5rem;color:var(--text-muted)}
+        .monthly-chart-x span{flex:1;text-align:center;overflow:hidden}
+        .monthly-chart-grid{position:absolute;left:32px;top:0;right:0;bottom:18px}
+        .monthly-chart-grid-line{position:absolute;left:0;right:0;border-top:1px dashed var(--border)}
+        .monthly-chart-bars{position:absolute;left:32px;top:4px;right:4px;bottom:18px;display:flex;align-items:flex-end;gap:2px}
+        .monthly-bar-group{flex:1;display:flex;gap:1px;justify-content:center;align-items:flex-end;height:100%}
+        .monthly-bar{min-width:3px;max-width:14px;flex:1;border-radius:2px 2px 0 0;transition:all .15s;cursor:pointer;min-height:1px}
+        .monthly-bar:hover{opacity:.7}
+        .chart-container{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem;margin-bottom:1rem}
+        .chart-title{font-size:.75rem;font-weight:600;margin-bottom:.625rem}
+        .bar-chart{display:flex;flex-direction:column;gap:.35rem}
+        .bar-row{display:flex;align-items:center;gap:.4rem}
+        .bar-label{font-size:.65rem;color:var(--text-secondary);min-width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bar-track{flex:1;height:16px;background:var(--bg-muted);border-radius:4px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:.35rem}
+        .bar-value{font-size:.55rem;font-weight:600;color:#fff}
+        .user-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.625rem}
+        .user-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.625rem}
+        .user-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem}
+        .user-card-name{font-weight:600;font-size:.7rem}
+        .user-card-hours{font-size:.9rem;font-weight:700;color:var(--accent)}
+        .user-card-bar{height:4px;background:var(--bg-muted);border-radius:3px;overflow:hidden;margin-bottom:.2rem}
+        .user-card-bar-fill{height:100%;border-radius:3px;background:var(--accent)}
+        .user-card-projects{font-size:.55rem;color:var(--text-muted)}
+        .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;padding:1rem}
+        .modal-overlay.show{display:flex}
+        .modal{background:var(--bg);border-radius:var(--radius);width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+        .modal-header{padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+        .modal-header h3{font-size:.875rem;font-weight:600}
+        .modal-close{background:none;border:none;font-size:1.125rem;cursor:pointer;color:var(--text-muted);line-height:1}
+        .modal-close:hover{color:var(--text)}
+        .modal-body{padding:1rem}
+        .modal-footer{padding:.75rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem}
+        .footer{background:var(--bg);border-top:1px solid var(--border);padding:.5rem 2rem;display:flex;justify-content:space-between;font-size:.625rem;color:var(--text-muted)}
+        .alert{padding:.5rem .75rem;border-radius:var(--radius);margin-bottom:.75rem;font-size:.7rem}
+        .alert.warning{background:rgba(245,158,11,.1);color:#b45309}
+        .empty-state{text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.75rem}
+        .checkbox-list{max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:.3rem}
+        .checkbox-item{display:flex;align-items:center;gap:.3rem;padding:.25rem .35rem;border-radius:4px;cursor:pointer}
+        .checkbox-item:hover{background:var(--bg-subtle)}
+        .checkbox-item input{cursor:pointer}.checkbox-item label{font-size:.7rem;cursor:pointer;flex:1}
+        .role-badge{padding:.15rem .35rem;border-radius:4px;font-size:.6rem;font-weight:500}
+        .role-badge.admin{background:rgba(239,68,68,.1);color:#ef4444}
+        .role-badge.manager{background:rgba(245,158,11,.1);color:#d97706}
+        .role-badge.user{background:rgba(148,163,184,.2);color:#64748b}
+        @media(max-width:900px){.timesheet-layout{grid-template-columns:1fr}.timesheet-sidebar{width:100%;order:-1}}
+        @media(max-width:768px){.header,.main-content,.footer,.nav-tabs{padding-left:1rem;padding-right:1rem}.monthly-chart{height:180px}}
+    </style>
+</head>
+<body>
+    <div class="login-screen" id="loginScreen">
+        <div class="login-main">
+            <div class="login-card">
+                <h1>⏱️ Project Time Tracker</h1>
+                <p>Control de dedicación por proyecto</p>
+                <div class="login-error" id="loginError">Usuario o contraseña incorrecta</div>
+                <div class="form-group"><label>Usuario</label><select id="loginUser"><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="loginPin" placeholder="••••••••" maxlength="10"></div>
+                <button class="btn-login" onclick="login()">Entrar</button>
+            </div>
+        </div>
+        <footer class="footer"><span>Developed by <a href="https://www.linkedin.com/in/miguelperezplanas/" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">Miguel Pérez Planas</a></span><span>v2.0.4</span></footer>
+    </div>
+    <div class="app" id="app">
+        <header class="header"><h1>⏱️ Project Time Tracker</h1><div class="header-user"><span>Conectado: <strong id="currentUserName"></strong></span><button class="btn btn-ghost btn-sm" onclick="openChangePassword()">🔑</button><button class="btn-logout" onclick="logout()">Salir</button></div></header>
+        <!-- Nav User -->
+        <nav class="nav-tabs" id="navUser" style="display:none">
+            <button class="nav-tab active" onclick="switchTab('timesheet',this)">⏱️ Imputación</button>
+            <button class="nav-tab" onclick="switchTab('myStats',this)">📊 Mi Resumen</button>
+        </nav>
+        <!-- Nav Manager -->
+        <nav class="nav-tabs" id="navManager" style="display:none">
+            <button class="nav-tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+            <button class="nav-tab" onclick="switchTab('timesheet',this)">⏱️ Imputación</button>
+            <button class="nav-tab" onclick="switchTab('myStats',this)">📈 Mi Resumen</button>
+        </nav>
+        <!-- Nav Admin -->
+        <nav class="nav-tabs" id="navAdmin" style="display:none">
+            <button class="nav-tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+            <button class="nav-tab" onclick="switchTab('companies',this)">🏢 Empresas <span class="badge" id="companyCount">0</span></button>
+            <button class="nav-tab" onclick="switchTab('depts',this)">🏬 Dptos <span class="badge" id="deptCount">0</span></button>
+            <button class="nav-tab" onclick="switchTab('projects',this)">📁 Proyectos <span class="badge" id="projectCount">0</span></button>
+            <button class="nav-tab" onclick="switchTab('tasks',this)">📋 Tareas <span class="badge" id="taskCount">0</span></button>
+            <button class="nav-tab" onclick="switchTab('users',this)">👥 Usuarios <span class="badge" id="userCount">0</span></button>
+            <button class="nav-tab" onclick="switchTab('allEntries',this)">📝 Imputaciones</button>
+            <button class="nav-tab" onclick="switchTab('settings',this)">⚙️ Config</button>
+        </nav>
+        <main class="main-content">
+            <!-- TIMESHEET -->
+            <div id="tab-timesheet" class="tab-content">
+                <div class="timesheet-layout">
+                    <div class="timesheet-main">
+                        <div class="user-info-card"><div class="user-info-item"><label>Usuario</label><span id="infoUserName">-</span></div><div class="user-info-item"><label>Perfil</label><span id="infoUserRole">-</span></div><div class="user-info-item"><label>Departamento</label><span id="infoUserDept">-</span></div><div class="user-info-item"><label>Empresa</label><span id="infoUserCompany">-</span></div></div>
+                        <div class="timesheet-header">
+                            <div class="week-nav"><button onclick="changeWeek(-1)">◀</button><div class="week-label" id="weekLabel">Semana</div><button onclick="changeWeek(1)">▶</button><button onclick="goToCurrentWeek()">Hoy</button></div>
+                            <div class="copy-btns"><button class="btn btn-ghost btn-sm" onclick="copyWeek(-1)">📋 Anterior</button><button class="btn btn-ghost btn-sm" onclick="copyWeek(1)">📋 Siguiente</button></div>
+                        </div>
+                        <div class="card"><div class="card-body" style="padding:0;overflow-x:auto;"><table class="timesheet-table"><thead><tr><th class="project-header">Proyecto</th><th class="task-header">Tarea</th><th>Lun<br><span id="dateH0"></span></th><th>Mar<br><span id="dateH1"></span></th><th>Mié<br><span id="dateH2"></span></th><th>Jue<br><span id="dateH3"></span></th><th>Vie<br><span id="dateH4"></span></th><th style="width:40px">Total</th><th style="width:24px"></th></tr></thead><tbody id="timesheetBody"></tbody><tfoot><tr class="add-row"><td colspan="9"><button class="btn btn-ghost btn-sm" onclick="addTimesheetRow()">+ Añadir línea</button></td></tr><tr class="day-total"><td colspan="2" style="text-align:right;font-weight:600">TOTAL</td><td id="total0">0</td><td id="total1">0</td><td id="total2">0</td><td id="total3">0</td><td id="total4">0</td><td class="grand-total" id="weekTotal">0</td><td></td></tr></tfoot></table></div></div>
+                    </div>
+                    <div class="timesheet-sidebar">
+                        <div class="mini-calendar" id="miniCalendar"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- MY STATS -->
+            <div id="tab-myStats" class="tab-content">
+                <div class="filters-row">
+                    <div class="filter-group"><label>Desde</label><input type="date" id="myDateFrom" onchange="saveMyFilterDates();updateMyStats()"></div>
+                    <div class="filter-group"><label>Hasta</label><input type="date" id="myDateTo" onchange="saveMyFilterDates();updateMyStats()"></div>
+                    <div class="filter-group"><label>Agrupar</label><select id="myGroupBy" onchange="updateMyStats()"><option value="total">Total</option><option value="project">Proyecto</option></select></div>
+                    <div class="filter-group"><label>Proyecto</label><select id="myProjectFilter" onchange="updateMyStats()"><option value="all">Todos</option></select></div>
+                    <button class="btn btn-ghost btn-sm" onclick="resetMyFilters()">Limpiar</button>
+                </div>
+                <div class="kpi-grid"><div class="kpi-card accent"><div class="kpi-label">Horas Período</div><div class="kpi-value" id="myTotalHours">0</div></div><div class="kpi-card success"><div class="kpi-label">Proyectos</div><div class="kpi-value" id="myProjectCount">0</div></div><div class="kpi-card warning"><div class="kpi-label">Media/Mes</div><div class="kpi-value" id="myAvgMonth">0</div></div></div>
+                <div class="chart-section">
+                    <div class="chart-section-header"><span class="chart-section-title">Mis Horas por Mes</span><div class="chart-legend" id="myChartLegend"></div></div>
+                    <div class="monthly-chart"><div class="monthly-chart-y" id="myChartY"></div><div class="monthly-chart-grid" id="myChartGrid"></div><div class="monthly-chart-bars" id="myChartBars"></div><div class="monthly-chart-x" id="myChartX"></div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
+                    <div class="chart-container"><div class="chart-title">Por Proyecto</div><div class="bar-chart" id="myProjectChart"></div></div>
+                    <div class="chart-container"><div class="chart-title">Por Tarea</div><div class="bar-chart" id="myTaskChart"></div></div>
+                </div>
+            </div>
+            <!-- DASHBOARD -->
+            <div id="tab-dashboard" class="tab-content">
+                <div class="filters-row">
+                    <div class="filter-group"><label>Desde</label><input type="date" id="dashDateFrom" onchange="saveFilterDates();updateDashboard()"></div>
+                    <div class="filter-group"><label>Hasta</label><input type="date" id="dashDateTo" onchange="saveFilterDates();updateDashboard()"></div>
+                    <div class="filter-group"><label>Agrupar</label><select id="dashGroupBy" onchange="updateDashboard()"><option value="total">Total</option><option value="user">Persona</option><option value="dept">Departamento</option><option value="company">Empresa</option><option value="project">Proyecto</option></select></div>
+                    <div class="filter-group"><label>Empresas</label><div class="filter-checkboxes" id="dashCompanyChecks"></div></div>
+                    <div class="filter-group"><label>Departamentos</label><div class="filter-checkboxes" id="dashDeptChecks"></div></div>
+                    <div class="filter-group"><label>Personas</label><div class="filter-checkboxes" id="dashUserChecks"></div></div>
+                    <div class="filter-group"><label>Proyectos</label><div class="filter-checkboxes" id="dashProjectChecks"></div></div>
+                    <div style="display:flex;flex-direction:column;gap:.3rem;justify-content:flex-end">
+                        <button class="btn btn-ghost btn-sm" onclick="resetDashFilters()">Limpiar</button>
+                        <button class="btn btn-primary btn-sm" onclick="exportDashboardExcel()">📊 Exportar</button>
+                    </div>
+                </div>
+                <div class="kpi-grid"><div class="kpi-card accent"><div class="kpi-label">Horas Totales</div><div class="kpi-value" id="dashTotalHours">0</div></div><div class="kpi-card success"><div class="kpi-label">Usuarios</div><div class="kpi-value" id="dashActiveUsers">0</div></div><div class="kpi-card warning"><div class="kpi-label">Proyectos</div><div class="kpi-value" id="dashProjects">0</div></div><div class="kpi-card"><div class="kpi-label">Media/Mes</div><div class="kpi-value" id="dashAvgMonth">0</div></div></div>
+                <div id="dashAlerts"></div>
+                <div class="chart-section">
+                    <div class="chart-section-header"><span class="chart-section-title">Horas por Mes</span><div class="chart-legend" id="dashChartLegend"></div></div>
+                    <div class="monthly-chart"><div class="monthly-chart-y" id="dashChartY"></div><div class="monthly-chart-grid" id="dashChartGrid"></div><div class="monthly-chart-bars" id="dashChartBars"></div><div class="monthly-chart-x" id="dashChartX"></div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem"><div class="chart-container"><div class="chart-title">Por Proyecto</div><div class="bar-chart" id="dashProjectChart"></div></div><div class="chart-container"><div class="chart-title">Por Tarea</div><div class="bar-chart" id="dashTaskChart"></div></div></div>
+                <div class="card"><div class="card-header"><h3>Resumen por Usuario</h3></div><div class="card-body"><div class="user-summary" id="dashUserSummary"></div></div></div>
+            </div>
+            <!-- Other tabs -->
+            <div id="tab-companies" class="tab-content"><div class="card"><div class="card-header"><h3>Empresas</h3><button class="btn btn-primary" onclick="openModal('company')">+ Añadir</button></div><div class="card-body"><div class="table-container"><table><thead><tr><th>Código</th><th>Nombre</th><th>Proyectos</th><th></th></tr></thead><tbody id="companiesTable"></tbody></table></div><div id="companiesEmpty" class="empty-state" style="display:none">No hay empresas</div></div></div></div>
+            <div id="tab-depts" class="tab-content"><div class="card"><div class="card-header"><h3>Departamentos</h3><button class="btn btn-primary" onclick="openModal('dept')">+ Añadir</button></div><div class="card-body"><div class="table-container"><table><thead><tr><th>Código</th><th>Nombre</th><th>Usuarios</th><th></th></tr></thead><tbody id="deptsTable"></tbody></table></div><div id="deptsEmpty" class="empty-state" style="display:none">No hay departamentos</div></div></div></div>
+            <div id="tab-projects" class="tab-content"><div class="card"><div class="card-header"><h3>Proyectos</h3><button class="btn btn-primary" onclick="openModal('project')">+ Añadir</button></div><div class="card-body"><div class="table-container"><table><thead><tr><th>Código</th><th>Nombre</th><th>Cliente</th><th>Empresa</th><th>Estado</th><th></th></tr></thead><tbody id="projectsTable"></tbody></table></div><div id="projectsEmpty" class="empty-state" style="display:none">No hay proyectos</div></div></div></div>
+            <div id="tab-tasks" class="tab-content"><div class="card"><div class="card-header"><h3>Tareas Tipo</h3><button class="btn btn-primary" onclick="openModal('task')">+ Añadir</button></div><div class="card-body"><div class="table-container"><table><thead><tr><th>Nombre</th><th>Color</th><th></th></tr></thead><tbody id="tasksTable"></tbody></table></div></div></div></div>
+            <div id="tab-users" class="tab-content"><div class="card"><div class="card-header"><h3>Usuarios</h3><button class="btn btn-primary" onclick="openModal('user')">+ Añadir</button></div><div class="card-body"><div class="table-container"><table><thead><tr><th>Nombre</th><th>Perfil</th><th>Dpto</th><th>Empresa</th><th>Rol</th><th>Dptos Asignados</th><th>Proyectos</th><th></th></tr></thead><tbody id="usersTable"></tbody></table></div></div></div></div>
+            <div id="tab-allEntries" class="tab-content"><div class="card"><div class="card-header"><h3>Imputaciones</h3><div style="display:flex;gap:.5rem;flex-wrap:wrap"><select id="filterUser" onchange="filterEntries()" style="padding:.3rem;border:1px solid var(--border);border-radius:6px;font-size:.65rem"><option value="all">Todos</option></select><select id="filterProject" onchange="filterEntries()" style="padding:.3rem;border:1px solid var(--border);border-radius:6px;font-size:.65rem"><option value="all">Todos</option></select><input type="month" id="filterMonth" onchange="filterEntries()" style="padding:.3rem;border:1px solid var(--border);border-radius:6px;font-size:.65rem"></div></div><div class="card-body"><div class="table-container"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Proyecto</th><th>Tarea</th><th>Horas</th></tr></thead><tbody id="entriesTable"></tbody></table></div></div></div></div>
+            <div id="tab-settings" class="tab-content"><div class="card"><div class="card-header"><h3>Exportar / Importar</h3></div><div class="card-body"><div style="display:flex;gap:1rem;flex-wrap:wrap"><button class="btn btn-primary" onclick="exportAllExcel()">📊 Excel</button><button class="btn btn-ghost" onclick="exportAllJSON()">📄 JSON</button><button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">📥 Importar</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)"></div></div></div><div class="card"><div class="card-header"><h3>Datos de Prueba</h3></div><div class="card-body"><p style="margin-bottom:.75rem;color:var(--text-secondary);font-size:.7rem">Carga datos de ejemplo (6 meses).</p><button class="btn btn-ghost" onclick="loadSampleData()">Cargar Datos</button></div></div></div>
+        </main>
+        <footer class="footer"><span>Developed by <a href="https://www.linkedin.com/in/miguelperezplanas/" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">Miguel Pérez Planas</a></span><span>v2.0.4</span></footer>
+    </div>
+    <!-- Modals -->
+    <div class="modal-overlay" id="companyModal"><div class="modal"><div class="modal-header"><h3 id="companyModalTitle">Empresa</h3><button class="modal-close" onclick="closeModal('company')">×</button></div><div class="modal-body"><input type="hidden" id="companyEditId"><div class="form-group" style="margin-bottom:.75rem"><label>Código</label><input type="text" id="companyCode"></div><div class="form-group"><label>Nombre</label><input type="text" id="companyName"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('company')">Cancelar</button><button class="btn btn-primary" onclick="saveCompany()">Guardar</button></div></div></div>
+    <div class="modal-overlay" id="deptModal"><div class="modal"><div class="modal-header"><h3 id="deptModalTitle">Departamento</h3><button class="modal-close" onclick="closeModal('dept')">×</button></div><div class="modal-body"><input type="hidden" id="deptEditId"><div class="form-group" style="margin-bottom:.75rem"><label>Código</label><input type="text" id="deptCode"></div><div class="form-group"><label>Nombre</label><input type="text" id="deptName"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('dept')">Cancelar</button><button class="btn btn-primary" onclick="saveDept()">Guardar</button></div></div></div>
+    <div class="modal-overlay" id="projectModal"><div class="modal"><div class="modal-header"><h3 id="projectModalTitle">Proyecto</h3><button class="modal-close" onclick="closeModal('project')">×</button></div><div class="modal-body"><input type="hidden" id="projectEditId"><div class="form-group" style="margin-bottom:.75rem"><label>Código</label><input type="text" id="projectCode"></div><div class="form-group" style="margin-bottom:.75rem"><label>Nombre</label><input type="text" id="projectName"></div><div class="form-group" style="margin-bottom:.75rem"><label>Cliente</label><input type="text" id="projectClient"></div><div class="form-group" style="margin-bottom:.75rem"><label>Empresa</label><select id="projectCompany"><option value="">Seleccionar...</option></select></div><div class="form-group"><label>Estado</label><select id="projectStatus"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('project')">Cancelar</button><button class="btn btn-primary" onclick="saveProject()">Guardar</button></div></div></div>
+    <div class="modal-overlay" id="taskModal"><div class="modal"><div class="modal-header"><h3 id="taskModalTitle">Tarea</h3><button class="modal-close" onclick="closeModal('task')">×</button></div><div class="modal-body"><input type="hidden" id="taskEditId"><div class="form-group" style="margin-bottom:.75rem"><label>Nombre</label><input type="text" id="taskName"></div><div class="form-group"><label>Color</label><input type="color" id="taskColor" value="#6366f1"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('task')">Cancelar</button><button class="btn btn-primary" onclick="saveTask()">Guardar</button></div></div></div>
+    <div class="modal-overlay" id="userModal"><div class="modal"><div class="modal-header"><h3 id="userModalTitle">Usuario</h3><button class="modal-close" onclick="closeModal('user')">×</button></div><div class="modal-body"><input type="hidden" id="userEditId"><div class="form-row"><div class="form-group"><label>Nombre</label><input type="text" id="userName"></div><div class="form-group"><label>Contraseña (hasta 10 car.)</label><input type="text" id="userPin" maxlength="10" placeholder="alfanumérico"></div></div><div class="form-row"><div class="form-group"><label>Perfil</label><input type="text" id="userProfile"></div><div class="form-group"><label>Departamento</label><select id="userDept"><option value="">Seleccionar...</option></select></div></div><div class="form-row"><div class="form-group"><label>Empresa</label><select id="userCompany"><option value="">Seleccionar...</option></select></div><div class="form-group"><label>Rol</label><select id="userRole"><option value="user">Usuario</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div><div class="form-group" id="managerDeptsGroup" style="display:none;margin-bottom:.75rem"><label>Departamentos que gestiona (Manager)</label><div class="checkbox-list" id="managerDeptsList"></div></div><div class="form-group"><label>Proyectos Asignados</label><div class="checkbox-list" id="userProjectsList"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('user')">Cancelar</button><button class="btn btn-primary" onclick="saveUser()">Guardar</button></div></div></div>
+    <div class="modal-overlay" id="passwordModal"><div class="modal" style="max-width:340px"><div class="modal-header"><h3>Cambiar Contraseña</h3><button class="modal-close" onclick="closeModal('password')">×</button></div><div class="modal-body"><div class="form-group" style="margin-bottom:.75rem"><label>Nueva Contraseña</label><input type="password" id="newPassword" maxlength="10" placeholder="hasta 10 caracteres"></div><div class="form-group"><label>Confirmar Contraseña</label><input type="password" id="confirmPassword" maxlength="10"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('password')">Cancelar</button><button class="btn btn-primary" onclick="changeMyPassword()">Cambiar</button></div></div></div>
+<script>
+const VERSION='2.0.4';
+const API_URL='api.php?path=';
+let currentUser=null;
+let currentWeekStart=getMonday(new Date());
+let calendarMonth=new Date();
+let data={companies:[],depts:[],projects:[],tasks:[],users:[],entries:[],version:VERSION};
+const COLORS=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#14b8a6','#f97316'];
+const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const DAYS_SHORT=['L','M','X','J','V','S','D'];
+
+// ===== API FUNCTIONS =====
+async function api(endpoint, method='GET', body=null){
+    const opts={method, headers:{'Content-Type':'application/json'}};
+    if(body)opts.body=JSON.stringify(body);
+    try{
+        const res=await fetch(API_URL+endpoint+(method==='DELETE'&&body?'&id='+body.id:''),opts);
+        const json=await res.json();
+        if(!res.ok){
+            console.error('API Error:',json);
+            throw new Error(json.error||json.message||'Error del servidor');
+        }
+        return json;
+    }catch(e){
+        console.error('API Call Failed:',endpoint,method,body,e);
+        throw e;
+    }
+}
+
+async function loadData(){
+    try{
+        const all=await api('all');
+        data.companies=all.companies||[];
+        data.depts=all.depts||[];
+        data.projects=all.projects||[];
+        data.tasks=all.tasks||[];
+        data.users=all.users||[];
+        // FIX: Convertir hours de string a number (MySQL devuelve strings)
+        data.entries=(all.entries||[]).map(e=>({...e,hours:parseFloat(e.hours)||0}));
+    }catch(e){
+        console.error('Error cargando datos:',e);
+        alert('Error conectando con el servidor. Verifica la configuración.');
+    }
+}
+
+async function init(){
+    await loadData();
+    renderLoginUsers();
+    document.getElementById('filterMonth').value=new Date().toISOString().slice(0,7);
+    initFilterDates();
+}
+
+function initFilterDates(){
+    const saved=localStorage.getItem('timeTrackerFilters');
+    let dateFrom,dateTo;
+    if(saved){
+        const f=JSON.parse(saved);
+        dateFrom=f.dateFrom;
+        dateTo=f.dateTo;
+    }else{
+        const now=new Date();
+        dateFrom=formatDate(new Date(now.getFullYear(),0,1));
+        dateTo=formatDate(new Date(now.getFullYear(),11,31));
+    }
+    document.getElementById('dashDateFrom').value=dateFrom;
+    document.getElementById('dashDateTo').value=dateTo;
+    document.getElementById('myDateFrom').value=dateFrom;
+    document.getElementById('myDateTo').value=dateTo;
+}
+
+function saveFilterDates(){
+    const dashFrom=document.getElementById('dashDateFrom');
+    const dashTo=document.getElementById('dashDateTo');
+    const myFrom=document.getElementById('myDateFrom');
+    const myTo=document.getElementById('myDateTo');
+    if(dashFrom&&dashTo&&dashFrom.value&&dashTo.value){
+        if(myFrom)myFrom.value=dashFrom.value;
+        if(myTo)myTo.value=dashTo.value;
+        localStorage.setItem('timeTrackerFilters',JSON.stringify({dateFrom:dashFrom.value,dateTo:dashTo.value}));
+    }
+}
+
+function saveMyFilterDates(){
+    const dashFrom=document.getElementById('dashDateFrom');
+    const dashTo=document.getElementById('dashDateTo');
+    const myFrom=document.getElementById('myDateFrom');
+    const myTo=document.getElementById('myDateTo');
+    if(myFrom&&myTo&&myFrom.value&&myTo.value){
+        if(dashFrom)dashFrom.value=myFrom.value;
+        if(dashTo)dashTo.value=myTo.value;
+        localStorage.setItem('timeTrackerFilters',JSON.stringify({dateFrom:myFrom.value,dateTo:myTo.value}));
+    }
+}
+
+function renderLoginUsers(){document.getElementById('loginUser').innerHTML='<option value="">Seleccionar...</option>'+data.users.map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');}
+
+async function login(){
+    const userId=document.getElementById('loginUser').value;
+    const pin=document.getElementById('loginPin').value;
+    try{
+        const res=await api('login','POST',{userId,pin});
+        if(res.success){
+            currentUser=res.user;
+            document.getElementById('loginScreen').style.display='none';
+            document.getElementById('app').classList.add('active');
+            document.getElementById('currentUserName').textContent=currentUser.name;
+            document.getElementById('loginError').style.display='none';
+            document.getElementById('loginPin').value='';
+            await loadData(); // Refresh data after login
+            showViewForRole(currentUser.role);
+        }else{document.getElementById('loginError').style.display='block';}
+    }catch(e){
+        console.error('Error login:',e);
+        document.getElementById('loginError').style.display='block';
+    }
+}
+
+function showViewForRole(role){
+    document.getElementById('navUser').style.display='none';
+    document.getElementById('navManager').style.display='none';
+    document.getElementById('navAdmin').style.display='none';
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    
+    if(role==='admin'){
+        document.getElementById('navAdmin').style.display='flex';
+        document.getElementById('tab-dashboard').classList.add('active');
+        updateCounts();renderAll();populateDashFilters();updateDashboard();
+    }else if(role==='manager'){
+        document.getElementById('navManager').style.display='flex';
+        document.getElementById('tab-dashboard').classList.add('active');
+        populateDashFilters();updateDashboard();
+    }else{
+        document.getElementById('navUser').style.display='flex';
+        document.getElementById('tab-timesheet').classList.add('active');
+        updateUserInfoCard();renderMiniCalendar();renderTimesheet();
+    }
+}
+
+function logout(){currentUser=null;document.getElementById('app').classList.remove('active');document.getElementById('loginScreen').style.display='flex';}
+
+function updateUserInfoCard(){
+    const u=currentUser;
+    document.getElementById('infoUserName').textContent=u.name||'-';
+    document.getElementById('infoUserRole').textContent=u.profile||'-';
+    const dept=data.depts.find(d=>d.id===u.deptId);
+    document.getElementById('infoUserDept').textContent=dept?dept.name:'-';
+    const comp=data.companies.find(c=>c.id===u.companyId);
+    document.getElementById('infoUserCompany').textContent=comp?comp.name:'-';
+}
+
+function switchTab(tabId,btn){
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('tab-'+tabId).classList.add('active');
+    if(btn)btn.classList.add('active');
+    if(tabId==='myStats'){populateMyFilters();updateMyStats();}
+    if(tabId==='dashboard'){populateDashFilters();updateDashboard();}
+    if(tabId==='allEntries')filterEntries();
+    if(tabId==='timesheet'){updateUserInfoCard();renderMiniCalendar();renderTimesheet();}
+    if(tabId==='companies'){renderCompanies();updateCounts();}
+    if(tabId==='depts'){renderDepts();updateCounts();}
+    if(tabId==='projects'){renderProjects();updateCounts();}
+    if(tabId==='tasks'){renderTasks();updateCounts();}
+    if(tabId==='users'){renderUsers();updateCounts();}
+}
+
+function updateCounts(){document.getElementById('companyCount').textContent=data.companies.length;document.getElementById('deptCount').textContent=data.depts.length;document.getElementById('projectCount').textContent=data.projects.length;document.getElementById('taskCount').textContent=data.tasks.length;document.getElementById('userCount').textContent=data.users.length;}
+function renderAll(){renderCompanies();renderDepts();renderProjects();renderTasks();renderUsers();updateFilters();}
+function getMonday(d){const date=new Date(d);const day=date.getDay();const diff=date.getDate()-day+(day===0?-6:1);return new Date(date.setDate(diff));}
+function formatDate(d){return d.toISOString().split('T')[0];}
+function changeWeek(delta){currentWeekStart=new Date(currentWeekStart);currentWeekStart.setDate(currentWeekStart.getDate()+delta*7);calendarMonth=new Date(currentWeekStart);renderMiniCalendar();renderTimesheet();}
+function goToCurrentWeek(){currentWeekStart=getMonday(new Date());calendarMonth=new Date();renderMiniCalendar();renderTimesheet();}
+function getWeekDates(){const dates=[];for(let i=0;i<5;i++){const d=new Date(currentWeekStart);d.setDate(d.getDate()+i);dates.push(d);}return dates;}
+function getWeekNumber(d){const date=new Date(d);date.setHours(0,0,0,0);date.setDate(date.getDate()+4-(date.getDay()||7));const yearStart=new Date(date.getFullYear(),0,1);return Math.ceil((((date-yearStart)/86400000)+1)/7);}
+
+function renderMiniCalendar(){const container=document.getElementById('miniCalendar');const year=calendarMonth.getFullYear();const month=calendarMonth.getMonth();const firstDay=new Date(year,month,1);const lastDay=new Date(year,month+1,0);const startDay=(firstDay.getDay()+6)%7;const today=new Date();const weekDates=getWeekDates();const weekStart=formatDate(weekDates[0]);const weekEnd=formatDate(weekDates[4]);let html='<div class="mini-calendar-header"><button onclick="changeCalMonth(-1)">◀</button><span>'+MONTHS[month]+' '+year+'</span><button onclick="changeCalMonth(1)">▶</button></div><div class="mini-calendar-grid">';DAYS_SHORT.forEach(d=>{html+='<div class="day-name">'+d+'</div>';});let dayNum=1-startDay;for(let i=0;i<42;i++){const d=new Date(year,month,dayNum);const dateStr=formatDate(d);const isOther=d.getMonth()!==month;const isToday=formatDate(today)===dateStr;const isCurrentWeek=dateStr>=weekStart&&dateStr<=weekEnd;let cls='day';if(isOther)cls+=' other-month';if(isToday)cls+=' today';if(isCurrentWeek)cls+=' current-week';html+='<div class="'+cls+'" onclick="goToWeek(\''+dateStr+'\')">'+d.getDate()+'</div>';dayNum++;if(dayNum>lastDay.getDate()&&i>=27)break;}html+='</div>';container.innerHTML=html;}
+function changeCalMonth(delta){calendarMonth.setMonth(calendarMonth.getMonth()+delta);renderMiniCalendar();}
+function goToWeek(dateStr){const d=new Date(dateStr);currentWeekStart=getMonday(d);calendarMonth=new Date(d);renderMiniCalendar();renderTimesheet();}
+
+function renderTimesheet(){const dates=getWeekDates();document.getElementById('weekLabel').textContent='Semana '+getWeekNumber(dates[0])+' ('+dates[0].getDate()+'-'+dates[4].getDate()+' '+MONTHS[dates[0].getMonth()]+' '+dates[0].getFullYear()+')';for(let i=0;i<5;i++){document.getElementById('dateH'+i).textContent=dates[i].getDate();}const weekEntries=data.entries.filter(e=>e.userId===currentUser.id&&dates.some(d=>formatDate(d)===e.date));const rows={};weekEntries.forEach(e=>{const key=e.projectId+'-'+e.taskId;if(!rows[key])rows[key]={projectId:e.projectId,taskId:e.taskId,hours:{}};const dayIndex=dates.findIndex(d=>formatDate(d)===e.date);if(dayIndex>=0)rows[key].hours[dayIndex]=(rows[key].hours[dayIndex]||0)+(parseFloat(e.hours)||0);});const tbody=document.getElementById('timesheetBody');tbody.innerHTML=Object.values(rows).map(row=>{const project=data.projects.find(p=>p.id===row.projectId);const task=data.tasks.find(t=>t.id===row.taskId);const rowTotal=Object.values(row.hours).reduce((a,b)=>a+(parseFloat(b)||0),0);return '<tr><td class="project-cell">'+(project?project.code+' '+project.name:'-')+'</td><td class="task-cell">'+(task?task.name:'-')+'</td>'+[0,1,2,3,4].map(d=>'<td><input type="number" class="time-input" value="'+(row.hours[d]||'')+'" oninput="updateEntryAndRow(this,\''+row.projectId+'\',\''+row.taskId+'\','+d+')" min="0" max="24" step="0.5"></td>').join('')+'<td class="row-total">'+rowTotal.toFixed(1)+'</td><td><button class="remove-btn" onclick="removeRow(\''+row.projectId+'\',\''+row.taskId+'\')">×</button></td></tr>';}).join('');updateTotals();}
+
+function updateTotals(){const dates=getWeekDates();let week=0;for(let i=0;i<5;i++){const day=data.entries.filter(e=>e.userId===currentUser.id&&e.date===formatDate(dates[i])).reduce((s,e)=>s+(parseFloat(e.hours)||0),0);document.getElementById('total'+i).textContent=day.toFixed(1);week+=day;}document.getElementById('weekTotal').textContent=week.toFixed(1);}
+function updateRowTotal(input){const row=input.closest('tr');const inputs=row.querySelectorAll('.time-input');let total=0;inputs.forEach(inp=>{total+=parseFloat(inp.value)||0;});row.querySelector('.row-total').textContent=total.toFixed(1);}
+function updateEntryAndRow(input,projectId,taskId,dayIndex){updateRowTotal(input);updateEntry(projectId,taskId,dayIndex,input.value);}
+async function updateEntry(projectId,taskId,dayIndex,value){
+    const dates=getWeekDates();
+    const date=formatDate(dates[dayIndex]);
+    const hours=parseFloat(value)||0;
+    const existing=data.entries.find(e=>e.userId===currentUser.id&&e.projectId===projectId&&e.taskId===taskId&&e.date===date);
+    if(hours>0){
+        if(existing){
+            await api('entries','PUT',{id:existing.id,hours});
+            existing.hours=hours;
+        }else{
+            const entry={id:'e'+Date.now(),userId:currentUser.id,projectId,taskId,date,hours};
+            await api('entries','POST',entry);
+            data.entries.push(entry);
+        }
+    }else if(existing){
+        await api('entries','DELETE',{id:existing.id});
+        data.entries=data.entries.filter(e=>e.id!==existing.id);
+    }
+    updateTotals();
+}
+
+function addTimesheetRow(){const userProjects=data.projects.filter(p=>p.status==='active');if(!userProjects.length){alert('No hay proyectos activos.');return;}const tbody=document.getElementById('timesheetBody');const row=document.createElement('tr');row.className='new-row';row.innerHTML='<td colspan="2"><div class="timesheet-selects"><select id="newProject"><option value="">Proyecto...</option>'+userProjects.map(p=>'<option value="'+p.id+'">'+p.code+' - '+p.name+'</option>').join('')+'</select><select id="newTask"><option value="">Tarea...</option>'+data.tasks.map(t=>'<option value="'+t.id+'">'+t.name+'</option>').join('')+'</select><button class="btn btn-sm btn-primary" onclick="confirmRow()">✓</button><button class="btn btn-sm btn-ghost" onclick="cancelRow()">✕</button></div></td><td colspan="7"></td>';tbody.appendChild(row);}
+async function confirmRow(){
+    const projectId=document.getElementById('newProject').value;
+    const taskId=document.getElementById('newTask').value;
+    if(!projectId||!taskId){alert('Selecciona proyecto y tarea.');return;}
+    const dates=getWeekDates();
+    const entry={id:'e'+Date.now()+Math.random().toString(36).substr(2,5),userId:currentUser.id,projectId,taskId,date:formatDate(dates[0]),hours:0};
+    try{
+        await api('entries','POST',entry);
+        data.entries.push(entry);
+        renderTimesheet();
+    }catch(e){
+        alert('Error al crear la fila: '+e.message);
+        console.error('confirmRow error:',e);
+    }
+}
+function cancelRow(){const r=document.querySelector('.new-row');if(r)r.remove();}
+async function removeRow(projectId,taskId){
+    if(!confirm('¿Eliminar línea?'))return;
+    const dates=getWeekDates();
+    const toDelete=data.entries.filter(e=>e.userId===currentUser.id&&e.projectId===projectId&&e.taskId===taskId&&dates.some(d=>formatDate(d)===e.date));
+    for(const e of toDelete){
+        await api('entries','DELETE',{id:e.id});
+    }
+    data.entries=data.entries.filter(e=>!toDelete.some(td=>td.id===e.id));
+    renderTimesheet();
+}
+
+async function copyWeek(direction){
+    const currentDates=getWeekDates();
+    const targetWeekStart=new Date(currentWeekStart);
+    targetWeekStart.setDate(targetWeekStart.getDate()+direction*7);
+    const targetDates=[];
+    for(let i=0;i<5;i++){const d=new Date(targetWeekStart);d.setDate(d.getDate()+i);targetDates.push(d);}
+    if(direction===-1){
+        const sourceEntries=data.entries.filter(e=>e.userId===currentUser.id&&targetDates.some(d=>formatDate(d)===e.date));
+        const sourceKeys=new Set(sourceEntries.map(e=>e.projectId+'-'+e.taskId));
+        if(!sourceKeys.size){alert('No hay filas en la semana anterior.');return;}
+        const existingKeys=new Set(data.entries.filter(e=>e.userId===currentUser.id&&currentDates.some(d=>formatDate(d)===e.date)).map(e=>e.projectId+'-'+e.taskId));
+        let copied=0;
+        for(const key of sourceKeys){
+            if(!existingKeys.has(key)){
+                const parts=key.split('-');
+                const entry={id:'e'+Date.now()+Math.random().toString(36).substr(2,5),userId:currentUser.id,projectId:parts[0],taskId:parts[1],date:formatDate(currentDates[0]),hours:0};
+                try{
+                    await api('entries','POST',entry);
+                    data.entries.push(entry);
+                    copied++;
+                }catch(err){
+                    console.error('Error copiando entrada:',err);
+                    alert('Error al copiar: '+err.message);
+                    return;
+                }
+            }
+        }
+        if(copied>0){renderTimesheet();alert('Copiadas '+copied+' filas.');}else{alert('Las filas ya existen.');}
+    }else{
+        const sourceEntries=data.entries.filter(e=>e.userId===currentUser.id&&currentDates.some(d=>formatDate(d)===e.date));
+        const sourceKeys=new Set(sourceEntries.map(e=>e.projectId+'-'+e.taskId));
+        if(!sourceKeys.size){alert('No hay filas esta semana.');return;}
+        const existingKeys=new Set(data.entries.filter(e=>e.userId===currentUser.id&&targetDates.some(d=>formatDate(d)===e.date)).map(e=>e.projectId+'-'+e.taskId));
+        let copied=0;
+        for(const key of sourceKeys){
+            if(!existingKeys.has(key)){
+                const parts=key.split('-');
+                const entry={id:'e'+Date.now()+Math.random().toString(36).substr(2,5),userId:currentUser.id,projectId:parts[0],taskId:parts[1],date:formatDate(targetDates[0]),hours:0};
+                try{
+                    await api('entries','POST',entry);
+                    data.entries.push(entry);
+                    copied++;
+                }catch(err){
+                    console.error('Error copiando entrada:',err);
+                    alert('Error al copiar: '+err.message);
+                    return;
+                }
+            }
+        }
+        if(copied>0){alert('Copiadas '+copied+' filas.');}else{alert('Las filas ya existen.');}
+    }
+}
+
+// Password change
+function openChangePassword(){document.getElementById('newPassword').value='';document.getElementById('confirmPassword').value='';document.getElementById('passwordModal').classList.add('show');}
+async function changeMyPassword(){
+    const newPwd=document.getElementById('newPassword').value;
+    const confirm=document.getElementById('confirmPassword').value;
+    if(!newPwd||newPwd.length<1){alert('Introduce una contraseña.');return;}
+    if(newPwd!==confirm){alert('Las contraseñas no coinciden.');return;}
+    currentUser.pin=newPwd;
+    await api('users','PUT',currentUser);
+    await loadData();
+    closeModal('password');
+    alert('Contraseña cambiada correctamente.');
+}
+
+// MY STATS
+function populateMyFilters(){
+    const userProjects=currentUser.role==='admin'?data.projects:data.projects.filter(p=>currentUser.projects.includes(p.id));
+    document.getElementById('myProjectFilter').innerHTML='<option value="all">Todos</option>'+userProjects.map(p=>'<option value="'+p.id+'">'+p.code+'</option>').join('');
+}
+function resetMyFilters(){initFilterDates();document.getElementById('myProjectFilter').value='all';updateMyStats();}
+
+function updateMyStats(){
+    const dateFrom=document.getElementById('myDateFrom').value;
+    const dateTo=document.getElementById('myDateTo').value;
+    const groupBy=document.getElementById('myGroupBy').value;
+    const projectFilter=document.getElementById('myProjectFilter').value;
+    let entries=data.entries.filter(e=>e.userId===currentUser.id&&e.date>=dateFrom&&e.date<=dateTo);
+    if(projectFilter!=='all')entries=entries.filter(e=>e.projectId===projectFilter);
+    const total=entries.reduce((s,e)=>s+e.hours,0);
+    const projects=[...new Set(entries.map(e=>e.projectId))];
+    const from=new Date(dateFrom);const to=new Date(dateTo);
+    const monthsDiff=Math.max(1,(to.getFullYear()-from.getFullYear())*12+(to.getMonth()-from.getMonth())+1);
+    document.getElementById('myTotalHours').textContent=total.toFixed(0);
+    document.getElementById('myProjectCount').textContent=projects.length;
+    document.getElementById('myAvgMonth').textContent=(total/monthsDiff).toFixed(0);
+    renderMyMonthlyChart(entries,dateFrom,dateTo,groupBy,projectFilter);
+    const projH={};entries.forEach(e=>{projH[e.projectId]=(projH[e.projectId]||0)+e.hours;});
+    const taskH={};entries.forEach(e=>{taskH[e.taskId]=(taskH[e.taskId]||0)+e.hours;});
+    renderChart('myProjectChart',projH,data.projects,'code');
+    renderChart('myTaskChart',taskH,data.tasks,'name');
+}
+
+function renderMyMonthlyChart(entries,dateFrom,dateTo,groupBy,projectFilter){
+    const from=new Date(dateFrom);const to=new Date(dateTo);
+    const months=[];let d=new Date(from.getFullYear(),from.getMonth(),1);
+    while(d<=to){months.push({year:d.getFullYear(),month:d.getMonth(),label:MONTHS[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});d.setMonth(d.getMonth()+1);}
+    let groups=[];
+    if(groupBy==='total'){
+        groups=[{id:'total',name:'Total Horas',color:'#3b82f6'}];
+    }else if(projectFilter==='all'){
+        const userProjects=data.projects.filter(p=>p.status==='active');
+        groups=userProjects.slice(0,8).map((p,i)=>({id:p.id,name:p.code,color:COLORS[i%COLORS.length]}));
+    }else{
+        const p=data.projects.find(pr=>pr.id===projectFilter);
+        groups=[{id:projectFilter,name:p?p.code:'',color:COLORS[0]}];
+    }
+    const chartData={};groups.forEach(g=>{chartData[g.id]=new Array(months.length).fill(0);});
+    entries.forEach(e=>{
+        const parts=e.date.split('-');
+        const eDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+        const monthIdx=months.findIndex(m=>m.year===eDate.getFullYear()&&m.month===eDate.getMonth());
+        if(monthIdx>=0){
+            if(groupBy==='total'){chartData['total'][monthIdx]+=e.hours;}
+            else if(chartData[e.projectId]){chartData[e.projectId][monthIdx]+=e.hours;}
+        }
+    });
+    renderMonthlyChart('my',months,groups,chartData);
+}
+
+// DASHBOARD
+function populateDashFilters(){
+    const users=data.users.filter(u=>u.role!=='admin');
+    
+    // For manager, filter by managed depts
+    let filteredUsers=users;
+    let filteredDepts=data.depts;
+    if(currentUser.role==='manager'&&currentUser.managedDepts&&currentUser.managedDepts.length){
+        filteredDepts=data.depts.filter(d=>currentUser.managedDepts.includes(d.id));
+        filteredUsers=users.filter(u=>currentUser.managedDepts.includes(u.deptId));
+    }
+    
+    document.getElementById('dashCompanyChecks').innerHTML=data.companies.map(c=>'<label class="filter-checkbox"><input type="checkbox" value="'+c.id+'" onchange="updateDashboard()" checked>'+c.code+'</label>').join('');
+    document.getElementById('dashDeptChecks').innerHTML=filteredDepts.map(d=>'<label class="filter-checkbox"><input type="checkbox" value="'+d.id+'" onchange="updateDashboard()" checked>'+d.code+'</label>').join('');
+    document.getElementById('dashUserChecks').innerHTML=filteredUsers.map(u=>'<label class="filter-checkbox"><input type="checkbox" value="'+u.id+'" onchange="updateDashboard()" checked>'+u.name+'</label>').join('');
+    document.getElementById('dashProjectChecks').innerHTML=data.projects.map(p=>'<label class="filter-checkbox"><input type="checkbox" value="'+p.id+'" onchange="updateDashboard()" checked>'+p.code+'</label>').join('');
+}
+
+function resetDashFilters(){
+    initFilterDates();
+    document.getElementById('dashGroupBy').value='user';
+    document.querySelectorAll('.filter-checkboxes input[type="checkbox"]').forEach(cb=>cb.checked=true);
+    updateDashboard();
+}
+
+function getCheckedValues(containerId){return Array.from(document.querySelectorAll('#'+containerId+' input:checked')).map(cb=>cb.value);}
+
+function updateDashboard(){
+    const dateFrom=document.getElementById('dashDateFrom').value;
+    const dateTo=document.getElementById('dashDateTo').value;
+    const groupBy=document.getElementById('dashGroupBy').value;
+    const companyFilter=getCheckedValues('dashCompanyChecks');
+    const deptFilter=getCheckedValues('dashDeptChecks');
+    const userFilter=getCheckedValues('dashUserChecks');
+    const projectFilter=getCheckedValues('dashProjectChecks');
+    
+    let entries=data.entries.filter(e=>e.date>=dateFrom&&e.date<=dateTo);
+    
+    // Apply filters
+    if(companyFilter.length>0&&companyFilter.length<data.companies.length){const companyUsers=data.users.filter(u=>companyFilter.includes(u.companyId)).map(u=>u.id);entries=entries.filter(e=>companyUsers.includes(e.userId));}
+    if(deptFilter.length>0&&deptFilter.length<data.depts.length){const deptUsers=data.users.filter(u=>deptFilter.includes(u.deptId)).map(u=>u.id);entries=entries.filter(e=>deptUsers.includes(e.userId));}
+    if(userFilter.length>0&&userFilter.length<data.users.length){entries=entries.filter(e=>userFilter.includes(e.userId));}
+    if(projectFilter.length>0&&projectFilter.length<data.projects.length){entries=entries.filter(e=>projectFilter.includes(e.projectId));}
+    
+    const totalHours=entries.reduce((s,e)=>s+e.hours,0);
+    const activeUsers=[...new Set(entries.map(e=>e.userId))].length;
+    const activeProjects=[...new Set(entries.map(e=>e.projectId))].length;
+    const from=new Date(dateFrom);const to=new Date(dateTo);
+    const monthsDiff=Math.max(1,(to.getFullYear()-from.getFullYear())*12+(to.getMonth()-from.getMonth())+1);
+    
+    document.getElementById('dashTotalHours').textContent=totalHours.toFixed(0);
+    document.getElementById('dashActiveUsers').textContent=activeUsers;
+    document.getElementById('dashProjects').textContent=activeProjects;
+    document.getElementById('dashAvgMonth').textContent=(totalHours/monthsDiff).toFixed(0);
+    
+    const noEntry=data.users.filter(u=>u.role!=='admin'&&userFilter.includes(u.id)&&!entries.some(e=>e.userId===u.id));
+    document.getElementById('dashAlerts').innerHTML=noEntry.length?'<div class="alert warning">⚠️ Sin imputaciones: '+noEntry.map(u=>u.name).join(', ')+'</div>':'';
+    
+    renderDashMonthlyChart(entries,groupBy,dateFrom,dateTo,userFilter);
+    
+    const projH={};entries.forEach(e=>{projH[e.projectId]=(projH[e.projectId]||0)+e.hours;});
+    const taskH={};entries.forEach(e=>{taskH[e.taskId]=(taskH[e.taskId]||0)+e.hours;});
+    renderChart('dashProjectChart',projH,data.projects,'code');
+    renderChart('dashTaskChart',taskH,data.tasks,'name');
+    
+    const userH={};entries.forEach(e=>{if(!userH[e.userId])userH[e.userId]={total:0,projects:{}};userH[e.userId].total+=e.hours;userH[e.userId].projects[e.projectId]=(userH[e.userId].projects[e.projectId]||0)+e.hours;});
+    const maxU=Math.max(...Object.values(userH).map(u=>u.total),1);
+    const visibleUsers=data.users.filter(u=>u.role!=='admin'&&userFilter.includes(u.id));
+    document.getElementById('dashUserSummary').innerHTML=visibleUsers.map(u=>{const h=userH[u.id]?userH[u.id].total:0;const ps=userH[u.id]?Object.entries(userH[u.id].projects).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>{const p=data.projects.find(pr=>pr.id===x[0]);return p?p.code+' ('+x[1].toFixed(0)+'h)':'';}).filter(Boolean).join(', '):'Sin datos';return '<div class="user-card"><div class="user-card-header"><span class="user-card-name">'+u.name+'</span><span class="user-card-hours">'+h.toFixed(0)+'h</span></div><div class="user-card-bar"><div class="user-card-bar-fill" style="width:'+(h/maxU*100)+'%"></div></div><div class="user-card-projects">'+ps+'</div></div>';}).join('');
+}
+
+function renderDashMonthlyChart(entries,groupBy,dateFrom,dateTo,userFilter){
+    const from=new Date(dateFrom);const to=new Date(dateTo);
+    const months=[];let d=new Date(from.getFullYear(),from.getMonth(),1);
+    while(d<=to){months.push({year:d.getFullYear(),month:d.getMonth(),label:MONTHS[d.getMonth()]+' '+String(d.getFullYear()).slice(2)});d.setMonth(d.getMonth()+1);}
+    let groups=[];
+    const visibleUsers=data.users.filter(u=>u.role!=='admin'&&userFilter.includes(u.id));
+    if(groupBy==='total'){groups=[{id:'total',name:'Total Horas',color:'#3b82f6'}];}
+    else if(groupBy==='user'){groups=visibleUsers.slice(0,10).map((u,i)=>({id:u.id,name:u.name,color:COLORS[i%COLORS.length]}));}
+    else if(groupBy==='dept'){
+        const deptIds=[...new Set(visibleUsers.map(u=>u.deptId).filter(Boolean))];
+        groups=deptIds.map((did,i)=>{const de=data.depts.find(x=>x.id===did);return {id:did,name:de?de.code:'?',color:COLORS[i%COLORS.length]};});
+        if(visibleUsers.some(u=>!u.deptId))groups.push({id:'__none__',name:'Sin asignar',color:'#94a3b8'});
+    }
+    else if(groupBy==='company'){
+        groups=data.companies.map((c,i)=>({id:c.id,name:c.code,color:COLORS[i%COLORS.length]}));
+        if(visibleUsers.some(u=>!u.companyId))groups.push({id:'__none__',name:'Sin asignar',color:'#94a3b8'});
+    }
+    else if(groupBy==='project'){groups=data.projects.slice(0,10).map((p,i)=>({id:p.id,name:p.code,color:COLORS[i%COLORS.length]}));}
+    const chartData={};groups.forEach(g=>{chartData[g.id]=new Array(months.length).fill(0);});
+    entries.forEach(e=>{
+        const parts=e.date.split('-');
+        const eDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));const monthIdx=months.findIndex(m=>m.year===eDate.getFullYear()&&m.month===eDate.getMonth());if(monthIdx===-1)return;
+        let groupId=null;
+        if(groupBy==='total'){groupId='total';}
+        else if(groupBy==='user'){groupId=e.userId;}
+        else if(groupBy==='dept'){const user=data.users.find(u=>u.id===e.userId);groupId=user?(user.deptId||'__none__'):null;}
+        else if(groupBy==='company'){const user=data.users.find(u=>u.id===e.userId);groupId=user?(user.companyId||'__none__'):null;}
+        else if(groupBy==='project'){groupId=e.projectId;}
+        if(groupId&&chartData[groupId]){chartData[groupId][monthIdx]+=e.hours;}
+    });
+    renderMonthlyChart('dash',months,groups,chartData);
+}
+
+function renderMonthlyChart(prefix,months,groups,chartData){
+    let maxVal=0;
+    months.forEach((m,mi)=>{let monthTotal=0;groups.forEach(g=>{monthTotal+=chartData[g.id]?chartData[g.id][mi]:0;});maxVal=Math.max(maxVal,monthTotal);});
+    maxVal=Math.ceil(maxVal/10)*10||100;
+    document.getElementById(prefix+'ChartY').innerHTML='<span>'+maxVal+'</span><span>'+Math.round(maxVal*0.75)+'</span><span>'+Math.round(maxVal*0.5)+'</span><span>'+Math.round(maxVal*0.25)+'</span><span>0</span>';
+    document.getElementById(prefix+'ChartGrid').innerHTML='<div class="monthly-chart-grid-line" style="top:0%"></div><div class="monthly-chart-grid-line" style="top:25%"></div><div class="monthly-chart-grid-line" style="top:50%"></div><div class="monthly-chart-grid-line" style="top:75%"></div>';
+    document.getElementById(prefix+'ChartX').innerHTML=months.map(m=>'<span>'+m.label+'</span>').join('');
+    let barsHtml='';
+    months.forEach((m,mi)=>{barsHtml+='<div class="monthly-bar-group">';groups.forEach(g=>{const val=chartData[g.id]?chartData[g.id][mi]:0;const height=maxVal>0?(val/maxVal)*100:0;barsHtml+='<div class="monthly-bar" style="height:'+height+'%;background:'+g.color+'" title="'+g.name+': '+val.toFixed(0)+'h"></div>';});barsHtml+='</div>';});
+    document.getElementById(prefix+'ChartBars').innerHTML=barsHtml;
+    document.getElementById(prefix+'ChartLegend').innerHTML=groups.slice(0,8).map(g=>'<div class="chart-legend-item"><div class="chart-legend-color" style="background:'+g.color+'"></div><span>'+g.name+'</span></div>').join('');
+}
+
+function renderChart(id,dataObj,items,key){
+    const cont=document.getElementById(id);
+    const sorted=Object.entries(dataObj).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const max=Math.max(...sorted.map(s=>s[1]),1);
+    cont.innerHTML=sorted.length?sorted.map(([itemId,hours],i)=>{const item=items.find(x=>x.id===itemId);const label=item?(item[key]||item.name):'-';const color=item&&item.color?item.color:COLORS[i%COLORS.length];return '<div class="bar-row"><span class="bar-label" title="'+label+'">'+label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+(hours/max*100)+'%;background:'+color+'"><span class="bar-value">'+hours.toFixed(0)+'h</span></div></div></div>';}).join(''):'<p style="color:var(--text-muted);text-align:center;padding:.75rem;font-size:.7rem">Sin datos</p>';
+}
+
+// CRUD - Companies
+function renderCompanies(){
+    const t=document.getElementById('companiesTable');
+    const e=document.getElementById('companiesEmpty');
+    if(!data.companies.length){t.innerHTML='';e.style.display='block';return;}
+    e.style.display='none';
+    t.innerHTML=data.companies.map(c=>{
+        const cnt=data.projects.filter(p=>p.companyId===c.id).length;
+        return '<tr><td><strong>'+c.code+'</strong></td><td>'+c.name+'</td><td>'+cnt+'</td><td><div class="action-btns"><button class="action-btn" onclick="editCompany(\''+c.id+'\')">✎</button><button class="action-btn delete" onclick="deleteCompany(\''+c.id+'\')">×</button></div></td></tr>';
+    }).join('');
+    updateCompanySelects();
+}
+function updateCompanySelects(){
+    const opts='<option value="">Seleccionar...</option>'+data.companies.map(c=>'<option value="'+c.id+'">'+c.code+' - '+c.name+'</option>').join('');
+    document.getElementById('projectCompany').innerHTML=opts;
+    document.getElementById('userCompany').innerHTML=opts;
+}
+
+// CRUD - Departments
+function renderDepts(){
+    const t=document.getElementById('deptsTable');
+    const e=document.getElementById('deptsEmpty');
+    if(!data.depts.length){t.innerHTML='';e.style.display='block';return;}
+    e.style.display='none';
+    t.innerHTML=data.depts.map(d=>{
+        const cnt=data.users.filter(u=>u.deptId===d.id).length;
+        return '<tr><td><strong>'+d.code+'</strong></td><td>'+d.name+'</td><td>'+cnt+'</td><td><div class="action-btns"><button class="action-btn" onclick="editDept(\''+d.id+'\')">✎</button><button class="action-btn delete" onclick="deleteDept(\''+d.id+'\')">×</button></div></td></tr>';
+    }).join('');
+    updateDeptSelects();
+}
+function updateDeptSelects(){
+    const opts='<option value="">Seleccionar...</option>'+data.depts.map(d=>'<option value="'+d.id+'">'+d.code+' - '+d.name+'</option>').join('');
+    document.getElementById('userDept').innerHTML=opts;
+}
+async function saveDept(){
+    const id=document.getElementById('deptEditId').value;
+    const code=document.getElementById('deptCode').value.trim();
+    const name=document.getElementById('deptName').value.trim();
+    if(!code||!name){alert('Completa todos los campos.');return;}
+    const dept={id:id||'d'+Date.now(),code,name};
+    await api('depts',id?'PUT':'POST',dept);
+    await loadData();renderDepts();updateCounts();closeModal('dept');
+}
+function editDept(id){openModal('dept',id);}
+async function deleteDept(id){
+    if(data.users.some(u=>u.deptId===id)){alert('Tiene usuarios asociados.');return;}
+    if(confirm('¿Eliminar departamento?')){
+        await api('depts','DELETE',{id});
+        await loadData();renderDepts();updateCounts();
+    }
+}
+async function saveCompany(){
+    const id=document.getElementById('companyEditId').value;
+    const code=document.getElementById('companyCode').value.trim();
+    const name=document.getElementById('companyName').value.trim();
+    if(!code||!name){alert('Completa todos los campos.');return;}
+    const company={id:id||'c'+Date.now(),code,name};
+    await api('companies',id?'PUT':'POST',company);
+    await loadData();renderCompanies();updateCounts();closeModal('company');
+}
+function editCompany(id){openModal('company',id);}
+async function deleteCompany(id){
+    if(data.projects.some(p=>p.companyId===id)){alert('Tiene proyectos asociados.');return;}
+    if(confirm('¿Eliminar empresa?')){
+        await api('companies','DELETE',{id});
+        await loadData();renderCompanies();updateCounts();
+    }
+}
+
+// CRUD - Projects
+function renderProjects(){
+    const t=document.getElementById('projectsTable');
+    const e=document.getElementById('projectsEmpty');
+    if(!data.projects.length){t.innerHTML='';e.style.display='block';return;}
+    e.style.display='none';
+    t.innerHTML=data.projects.map(p=>{
+        const comp=data.companies.find(c=>c.id===p.companyId);
+        return '<tr><td><strong>'+p.code+'</strong></td><td>'+p.name+'</td><td>'+(p.client||'-')+'</td><td>'+(comp?comp.code:'-')+'</td><td><span style="padding:.1rem .3rem;border-radius:4px;font-size:.6rem;background:'+(p.status==='active'?'rgba(16,185,129,.1);color:#10b981':'rgba(148,163,184,.2);color:#64748b')+'">'+(p.status==='active'?'Activo':'Inactivo')+'</span></td><td><div class="action-btns"><button class="action-btn" onclick="editProject(\''+p.id+'\')">✎</button><button class="action-btn delete" onclick="deleteProject(\''+p.id+'\')">×</button></div></td></tr>';
+    }).join('');
+    updateFilters();
+}
+async function saveProject(){
+    const id=document.getElementById('projectEditId').value;
+    const code=document.getElementById('projectCode').value.trim();
+    const name=document.getElementById('projectName').value.trim();
+    const client=document.getElementById('projectClient').value.trim();
+    const companyId=document.getElementById('projectCompany').value;
+    const status=document.getElementById('projectStatus').value;
+    if(!code||!name){alert('Completa código y nombre.');return;}
+    const project={id:id||'p'+Date.now(),code,name,client,companyId,status};
+    await api('projects',id?'PUT':'POST',project);
+    await loadData();renderProjects();updateCounts();closeModal('project');
+}
+function editProject(id){openModal('project',id);}
+async function deleteProject(id){
+    if(data.entries.some(e=>e.projectId===id)){alert('Tiene horas imputadas.');return;}
+    if(confirm('¿Eliminar proyecto?')){
+        await api('projects','DELETE',{id});
+        await loadData();renderProjects();renderUsers();updateCounts();
+    }
+}
+
+// CRUD - Tasks
+function renderTasks(){document.getElementById('tasksTable').innerHTML=data.tasks.map((t,i)=>'<tr><td>'+t.name+'</td><td><span style="display:inline-block;width:16px;height:16px;border-radius:4px;background:'+t.color+'"></span></td><td><div class="action-btns"><button class="action-btn" onclick="moveTask('+i+',-1)" '+(i===0?'disabled style="opacity:.3"':'')+'>↑</button><button class="action-btn" onclick="moveTask('+i+',1)" '+(i===data.tasks.length-1?'disabled style="opacity:.3"':'')+'>↓</button><button class="action-btn" onclick="editTask(\''+t.id+'\')">✎</button><button class="action-btn delete" onclick="deleteTask(\''+t.id+'\')">×</button></div></td></tr>').join('');}
+async function moveTask(index,dir){
+    const newIndex=index+dir;
+    if(newIndex<0||newIndex>=data.tasks.length)return;
+    const temp=data.tasks[index];
+    data.tasks[index]=data.tasks[newIndex];
+    data.tasks[newIndex]=temp;
+    const order=data.tasks.map(t=>t.id);
+    await api('tasks','PUT',{reorder:true,order});
+    await loadData();renderTasks();
+}
+async function saveTask(){
+    const id=document.getElementById('taskEditId').value;
+    const name=document.getElementById('taskName').value.trim();
+    const color=document.getElementById('taskColor').value;
+    if(!name){alert('Introduce nombre.');return;}
+    const task={id:id||'t'+Date.now(),name,color};
+    await api('tasks',id?'PUT':'POST',task);
+    await loadData();renderTasks();updateCounts();closeModal('task');
+}
+function editTask(id){openModal('task',id);}
+async function deleteTask(id){
+    if(data.entries.some(e=>e.taskId===id)){alert('Tiene horas.');return;}
+    if(confirm('¿Eliminar?')){
+        await api('tasks','DELETE',{id});
+        await loadData();renderTasks();updateCounts();
+    }
+}
+
+function updateProjectCheckboxes(){document.getElementById('userProjectsList').innerHTML=data.projects.filter(p=>p.status==='active').map(p=>'<div class="checkbox-item"><input type="checkbox" id="up_'+p.id+'" value="'+p.id+'"><label for="up_'+p.id+'">'+p.code+' - '+p.name+'</label></div>').join('');}
+function updateManagerDeptCheckboxes(){document.getElementById('managerDeptsList').innerHTML=data.depts.map(d=>'<div class="checkbox-item"><input type="checkbox" id="md_'+d.id+'" value="'+d.id+'"><label for="md_'+d.id+'">'+d.code+' - '+d.name+'</label></div>').join('');}
+
+function renderUsers(){
+    document.getElementById('usersTable').innerHTML=data.users.map(u=>{
+        const projs=u.projects.map(pid=>{const p=data.projects.find(x=>x.id===pid);return p?p.code:'';}).filter(Boolean).join(', ');
+        const comp=data.companies.find(c=>c.id===u.companyId);
+        const dept=data.depts.find(d=>d.id===u.deptId);
+        const managedDepts=(u.managedDepts||[]).map(did=>{const d=data.depts.find(x=>x.id===did);return d?d.code:'';}).filter(Boolean).join(', ');
+        const roleBadge=u.role==='admin'?'admin':u.role==='manager'?'manager':'user';
+        const roleLabel=u.role==='admin'?'Admin':u.role==='manager'?'Manager':'Usuario';
+        return '<tr><td><strong>'+u.name+'</strong></td><td>'+(u.profile||'-')+'</td><td>'+(dept?dept.code:'-')+'</td><td>'+(comp?comp.code:'-')+'</td><td><span class="role-badge '+roleBadge+'">'+roleLabel+'</span></td><td style="font-size:.6rem;color:var(--text-secondary);max-width:70px;overflow:hidden;text-overflow:ellipsis">'+(u.role==='manager'?managedDepts:'-')+'</td><td style="font-size:.55rem;color:var(--text-secondary);max-width:70px;overflow:hidden;text-overflow:ellipsis">'+(u.role==='admin'?'Todos':(projs||'-'))+'</td><td><div class="action-btns"><button class="action-btn" onclick="editUser(\''+u.id+'\')">✎</button>'+(u.id!=='u0'?'<button class="action-btn delete" onclick="deleteUser(\''+u.id+'\')">×</button>':'')+'</div></td></tr>';
+    }).join('');
+    document.getElementById('filterUser').innerHTML='<option value="all">Todos</option>'+data.users.map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');
+    renderLoginUsers();
+}
+
+async function saveUser(){
+    const id=document.getElementById('userEditId').value;
+    const name=document.getElementById('userName').value.trim();
+    const pin=document.getElementById('userPin').value.trim();
+    const profile=document.getElementById('userProfile').value.trim();
+    const deptId=document.getElementById('userDept').value;
+    const companyId=document.getElementById('userCompany').value;
+    const role=document.getElementById('userRole').value;
+    if(!name||!pin){alert('Completa nombre y contraseña.');return;}
+    if(pin.length>10){alert('Contraseña máximo 10 caracteres.');return;}
+    const projects=[];document.querySelectorAll('#userProjectsList input:checked').forEach(cb=>projects.push(cb.value));
+    const managedDepts=[];document.querySelectorAll('#managerDeptsList input:checked').forEach(cb=>managedDepts.push(cb.value));
+    const user={id:id||'u'+Date.now(),name,pin,profile,deptId,companyId,role,projects,managedDepts};
+    await api('users',id?'PUT':'POST',user);
+    await loadData();renderUsers();updateCounts();closeModal('user');
+}
+function editUser(id){openModal('user',id);}
+async function deleteUser(id){
+    if(id==='u0'){alert('No se puede eliminar Admin.');return;}
+    if(confirm('¿Eliminar?')){
+        await api('users','DELETE',{id});
+        await loadData();renderUsers();updateCounts();
+    }
+}
+
+// Modal functions
+function openModal(type,id){
+    document.getElementById(type+'EditId').value=id||'';
+    document.getElementById(type+'ModalTitle').textContent=id?'Editar':'Añadir';
+    if(type==='company'){
+        if(id){const c=data.companies.find(x=>x.id===id);document.getElementById('companyCode').value=c.code;document.getElementById('companyName').value=c.name;}
+        else{document.getElementById('companyCode').value='';document.getElementById('companyName').value='';}
+    }
+    if(type==='dept'){
+        if(id){const d=data.depts.find(x=>x.id===id);document.getElementById('deptCode').value=d.code;document.getElementById('deptName').value=d.name;}
+        else{document.getElementById('deptCode').value='';document.getElementById('deptName').value='';}
+    }
+    if(type==='project'){
+        if(id){const p=data.projects.find(x=>x.id===id);document.getElementById('projectCode').value=p.code;document.getElementById('projectName').value=p.name;document.getElementById('projectClient').value=p.client||'';document.getElementById('projectCompany').value=p.companyId||'';document.getElementById('projectStatus').value=p.status;}
+        else{document.getElementById('projectCode').value='';document.getElementById('projectName').value='';document.getElementById('projectClient').value='';document.getElementById('projectCompany').value='';document.getElementById('projectStatus').value='active';}
+    }
+    if(type==='task'){
+        if(id){const t=data.tasks.find(x=>x.id===id);document.getElementById('taskName').value=t.name;document.getElementById('taskColor').value=t.color;}
+        else{document.getElementById('taskName').value='';document.getElementById('taskColor').value='#6366f1';}
+    }
+    if(type==='user'){
+        updateProjectCheckboxes();
+        updateManagerDeptCheckboxes();
+        updateDeptSelects();
+        document.getElementById('userRole').onchange=function(){document.getElementById('managerDeptsGroup').style.display=this.value==='manager'?'block':'none';};
+        if(id){
+            const u=data.users.find(x=>x.id===id);
+            document.getElementById('userName').value=u.name;
+            document.getElementById('userPin').value=u.pin;
+            document.getElementById('userProfile').value=u.profile||'';
+            document.getElementById('userDept').value=u.deptId||'';
+            document.getElementById('userCompany').value=u.companyId||'';
+            document.getElementById('userRole').value=u.role;
+            document.getElementById('managerDeptsGroup').style.display=u.role==='manager'?'block':'none';
+            setTimeout(()=>{
+                document.querySelectorAll('#userProjectsList input').forEach(cb=>cb.checked=false);
+                document.querySelectorAll('#managerDeptsList input').forEach(cb=>cb.checked=false);
+                u.projects.forEach(pid=>{const cb=document.getElementById('up_'+pid);if(cb)cb.checked=true;});
+                (u.managedDepts||[]).forEach(did=>{const cb=document.getElementById('md_'+did);if(cb)cb.checked=true;});
+            },10);
+        }else{
+            document.getElementById('userName').value='';document.getElementById('userPin').value='';document.getElementById('userProfile').value='';document.getElementById('userDept').value='';document.getElementById('userCompany').value='';document.getElementById('userRole').value='user';
+            document.getElementById('managerDeptsGroup').style.display='none';
+            setTimeout(()=>{document.querySelectorAll('#userProjectsList input').forEach(cb=>cb.checked=false);},10);
+        }
+    }
+    document.getElementById(type+'Modal').classList.add('show');
+}
+function closeModal(type){document.getElementById(type+'Modal').classList.remove('show');}
+
+function updateFilters(){document.getElementById('filterProject').innerHTML='<option value="all">Todos</option>'+data.projects.map(p=>'<option value="'+p.id+'">'+p.code+'</option>').join('');}
+
+function filterEntries(){
+    const userId=document.getElementById('filterUser').value;
+    const projectId=document.getElementById('filterProject').value;
+    const month=document.getElementById('filterMonth').value;
+    let entries=[...data.entries];
+    if(userId!=='all')entries=entries.filter(e=>e.userId===userId);
+    if(projectId!=='all')entries=entries.filter(e=>e.projectId===projectId);
+    if(month)entries=entries.filter(e=>e.date.startsWith(month));
+    entries.sort((a,b)=>b.date.localeCompare(a.date));
+    document.getElementById('entriesTable').innerHTML=entries.slice(0,100).map(e=>{
+        const user=data.users.find(u=>u.id===e.userId);
+        const proj=data.projects.find(p=>p.id===e.projectId);
+        const task=data.tasks.find(t=>t.id===e.taskId);
+        return '<tr><td>'+e.date+'</td><td>'+(user?user.name:'-')+'</td><td>'+(proj?proj.code+' '+proj.name:'-')+'</td><td>'+(task?task.name:'-')+'</td><td><strong>'+e.hours.toFixed(1)+'h</strong></td></tr>';
+    }).join('')||'<tr><td colspan="5" class="empty-state">No hay datos</td></tr>';
+}
+
+// Export/Import
+function exportAllJSON(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='time_tracker_'+formatDate(new Date())+'.json';a.click();}
+function importJSON(event){alert('La importación no está disponible en la versión servidor. Utiliza setup.php para inicializar datos.');event.target.value='';}
+function exportAllExcel(){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Código','Nombre']].concat(data.companies.map(c=>[c.code,c.name]))),'Empresas');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Código','Nombre']].concat(data.depts.map(d=>[d.code,d.name]))),'Departamentos');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Código','Nombre','Cliente','Empresa','Estado']].concat(data.projects.map(p=>{const co=data.companies.find(c=>c.id===p.companyId);return[p.code,p.name,p.client||'',co?co.code:'',p.status];}))),'Proyectos');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Nombre','Color']].concat(data.tasks.map(t=>[t.name,t.color]))),'Tareas');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Nombre','Perfil','Dpto','Empresa','Rol','Dptos Gestionados','Proyectos']].concat(data.users.map(u=>{const co=data.companies.find(c=>c.id===u.companyId);const dp=data.depts.find(d=>d.id===u.deptId);return[u.name,u.profile||'',dp?dp.code:'',co?co.code:'',u.role,(u.managedDepts||[]).map(did=>{const d=data.depts.find(x=>x.id===did);return d?d.code:'';}).join(', '),u.projects.map(pid=>{const p=data.projects.find(pr=>pr.id===pid);return p?p.code:'';}).join(', ')];}))),'Usuarios');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Fecha','Usuario','Proyecto','Tarea','Horas']].concat(data.entries.map(e=>{const u=data.users.find(us=>us.id===e.userId);const p=data.projects.find(pr=>pr.id===e.projectId);const t=data.tasks.find(ta=>ta.id===e.taskId);return[e.date,u?u.name:'',p?p.code:'',t?t.name:'',e.hours];}))),'Imputaciones');XLSX.writeFile(wb,'time_tracker_'+formatDate(new Date())+'.xlsx');}
+function exportDashboardExcel(){const dateFrom=document.getElementById('dashDateFrom').value;const dateTo=document.getElementById('dashDateTo').value;let entries=data.entries.filter(e=>e.date>=dateFrom&&e.date<=dateTo);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Fecha','Usuario','Perfil','Dpto','Proyecto','Cliente','Empresa','Tarea','Horas']].concat(entries.map(e=>{const u=data.users.find(us=>us.id===e.userId);const dp=u?data.depts.find(d=>d.id===u.deptId):null;const p=data.projects.find(pr=>pr.id===e.projectId);const co=p?data.companies.find(c=>c.id===p.companyId):null;const t=data.tasks.find(ta=>ta.id===e.taskId);return[e.date,u?u.name:'',u?u.profile:'',dp?dp.code:'',p?p.code:'',p?p.client:'',co?co.code:'',t?t.name:'',e.hours];}))),'Informe');XLSX.writeFile(wb,'informe_'+dateFrom+'_'+dateTo+'.xlsx');}
+
+function loadSampleData(){alert('La carga de datos de prueba no está disponible en la versión servidor. Utiliza setup.php para inicializar datos.');}
+
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
+document.getElementById('loginPin').addEventListener('keypress',e=>{if(e.key==='Enter')login();});
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

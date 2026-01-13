@@ -1,0 +1,140 @@
+================================================================================
+         TIME TRACKER v2.0.4 - INSTRUCCIONES DE INSTALACIÓN
+================================================================================
+
+CONTENIDO DEL PAQUETE:
+----------------------
+  index.html              Frontend (interfaz web)
+  api.php                 Backend API REST
+  config.php              Configuración BD (EDITAR CONTRASEÑA)
+  setup.php               Crear tablas BD (ELIMINAR DESPUÉS)
+  timetracker.nginx.conf  Configuración Nginx
+
+
+================================================================================
+PASO 1: COPIAR ARCHIVOS
+================================================================================
+
+sudo mkdir -p /var/www/timetracker
+sudo cp index.html api.php config.php setup.php /var/www/timetracker/
+sudo chown -R www-data:www-data /var/www/timetracker
+sudo chmod 644 /var/www/timetracker/*
+
+
+================================================================================
+PASO 2: CONFIGURAR NGINX PARA PHP
+================================================================================
+
+IMPORTANTE: Sin este paso, la API no funcionará (devolverá HTML en lugar de JSON)
+
+1. Copiar configuración:
+   sudo cp timetracker.nginx.conf /etc/nginx/sites-available/timetracker
+
+2. Editar si es necesario (versión PHP, rutas SSL):
+   sudo nano /etc/nginx/sites-available/timetracker
+
+3. Activar el site:
+   sudo ln -sf /etc/nginx/sites-available/timetracker /etc/nginx/sites-enabled/
+
+4. Verificar configuración:
+   sudo nginx -t
+
+5. Recargar Nginx:
+   sudo systemctl reload nginx
+
+
+================================================================================
+PASO 3: VERIFICAR PHP-FPM
+================================================================================
+
+1. Ver qué versiones de PHP-FPM hay instaladas:
+   ls /var/run/php/
+
+2. Verificar que PHP-FPM está activo:
+   sudo systemctl status php8.3-fpm
+
+3. Si usáis otra versión (ej: 8.1), editar timetracker.nginx.conf:
+   fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+
+
+================================================================================
+PASO 4: CONFIGURAR BASE DE DATOS
+================================================================================
+
+1. Editar credenciales MySQL:
+   sudo nano /var/www/timetracker/config.php
+   
+   Cambiar la línea:
+   $db_pass = 'TuPasswordSeguro123!';
+
+2. La base de datos ya existe, no hace falta ejecutar setup.php de nuevo
+   (las tablas ya están creadas)
+
+
+================================================================================
+PASO 5: VERIFICAR INSTALACIÓN
+================================================================================
+
+1. Probar que la API responde JSON:
+   curl "https://timetracker.resol.dom/api.php?path=all"
+   
+   ✓ Debe mostrar JSON: {"companies":[...],"depts":[...],...}
+   ✗ Si muestra HTML o descarga archivo: revisar configuración Nginx/PHP
+
+2. Acceder a la aplicación:
+   https://timetracker.resol.dom/
+
+3. Verificar versión:
+   El footer debe mostrar "v2.0.4"
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+PROBLEMA: La API devuelve HTML en lugar de JSON
+SOLUCIÓN: Nginx no procesa PHP. Verificar:
+  - El bloque "location ~ \.php$" existe en la config
+  - PHP-FPM está activo: sudo systemctl status php8.3-fpm
+  - La ruta del socket es correcta
+
+PROBLEMA: Error "rowTotal.toFixed is not a function"
+SOLUCIÓN: El index.html no está actualizado. Verificar versión:
+  grep "VERSION=" /var/www/timetracker/index.html
+  Debe decir VERSION='2.0.4'
+
+PROBLEMA: Error de conexión a BD
+SOLUCIÓN: Verificar credenciales en config.php
+
+PROBLEMA: Página no carga / 404
+SOLUCIÓN: Verificar que los archivos existen:
+  ls -la /var/www/timetracker/
+
+
+================================================================================
+SEGURIDAD (DESPUÉS DE VERIFICAR QUE TODO FUNCIONA)
+================================================================================
+
+1. Eliminar setup.php:
+   sudo rm /var/www/timetracker/setup.php
+
+2. Cambiar contraseña del usuario Admin desde la aplicación
+
+
+================================================================================
+RESUMEN DE COMANDOS
+================================================================================
+
+# Instalación completa
+sudo mkdir -p /var/www/timetracker
+sudo cp index.html api.php config.php setup.php /var/www/timetracker/
+sudo chown -R www-data:www-data /var/www/timetracker
+sudo cp timetracker.nginx.conf /etc/nginx/sites-available/timetracker
+sudo ln -sf /etc/nginx/sites-available/timetracker /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Verificación
+curl "https://timetracker.resol.dom/api.php?path=all"
+grep "VERSION=" /var/www/timetracker/index.html
+
+================================================================================

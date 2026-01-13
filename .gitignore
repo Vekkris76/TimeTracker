@@ -1,0 +1,33 @@
+# Archivos temporales
+tmpclaude-*
+*.tmp
+*.temp
+
+# Configuración sensible (descomentar si contiene credenciales)
+# config.php
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Copias de seguridad
+*_backup.*
+*_old.*
+*.bak
+
+# Logs
+*.log
+
+# Archivos ZIP
+*.zip
+
+# Node modules si se añade Node.js en el futuro
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
