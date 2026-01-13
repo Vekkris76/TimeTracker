@@ -34,3 +34,6 @@ composer.lock
 *.swp
 *.swo
 *~
+
+# Docker
+docker-compose.override.yml
